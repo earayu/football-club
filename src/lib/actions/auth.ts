@@ -25,10 +25,12 @@ export async function login(formData: FormData) {
     .eq("user_id", authData.user.id)
     .eq("status", "active");
 
-  if (!memberships || memberships.length === 0) {
+  const list = (memberships ?? []) as any[];
+
+  if (list.length === 0) {
     redirect({ href: "/create-club", locale });
-  } else if (memberships.length === 1) {
-    const slug = (memberships[0].clubs as any)?.slug;
+  } else if (list.length === 1) {
+    const slug = list[0].clubs?.slug;
     redirect({ href: `/club/${slug}`, locale });
   } else {
     redirect({ href: "/dashboard", locale });
