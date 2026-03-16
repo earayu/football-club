@@ -12,7 +12,7 @@ export default async function ClubLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ slug: string; locale: string }>;
+  params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
   const locale = await getLocale();
@@ -26,9 +26,7 @@ export default async function ClubLayout({
     .single();
 
   const club = data as ClubRow | null;
-  if (!club) {
-    notFound();
-  }
+  if (!club) notFound();
 
   const { count: memberCount } = await supabase
     .from("memberships")
@@ -51,30 +49,39 @@ export default async function ClubLayout({
     userMembership = data as MembershipRow | null;
   }
 
-  const isAdmin = userMembership?.role === "admin" && userMembership?.status === "active";
+  const isAdmin =
+    userMembership?.role === "admin" && userMembership?.status === "active";
+  const isMember = userMembership?.status === "active";
 
   return (
     <div>
       <div className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          <div className="flex items-center gap-6">
-            {club.badge_url ? (
-              <img
-                src={club.badge_url}
-                alt={club.name}
-                className="h-20 w-20 rounded-full object-cover shadow-md"
-              />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-3xl shadow-md">
-                ⚽
-              </div>
-            )}
-            <div className="flex-1">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+          <div className="flex items-start gap-5">
+            {/* Badge */}
+            <div className="shrink-0">
+              {club.badge_url ? (
+                <img
+                  src={club.badge_url}
+                  alt={club.name}
+                  className="h-20 w-20 rounded-full object-cover shadow-sm ring-2 ring-gray-100"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-3xl shadow-sm ring-2 ring-green-50">
+                  ⚽
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold text-gray-900">{club.name}</h1>
               {club.description && (
-                <p className="mt-1 text-sm text-gray-600">{club.description}</p>
+                <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                  {club.description}
+                </p>
               )}
-              <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-400">
                 {club.founded_date && (
                   <span>
                     {t("founded")} {new Date(club.founded_date).getFullYear()}
@@ -83,39 +90,46 @@ export default async function ClubLayout({
                 <span>{t("memberCount", { count: memberCount || 0 })}</span>
               </div>
             </div>
-            {isAdmin && (
-              <Link
-                href={`/club/${slug}/manage/info`}
-                title="Edit club info"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </Link>
-            )}
-          </div>
 
-          <nav className="mt-6 flex gap-6 border-t border-gray-100 pt-4">
-            <Link
-              href={`/club/${slug}`}
-              className="text-sm font-medium text-gray-600 hover:text-green-600"
-            >
-              {t("about")}
-            </Link>
-            <Link
-              href={`/club/${slug}/members`}
-              className="text-sm font-medium text-gray-600 hover:text-green-600"
-            >
-              {t("members")}
-            </Link>
-            <Link
-              href={`/club/${slug}/albums`}
-              className="text-sm font-medium text-gray-600 hover:text-green-600"
-            >
-              {t("albums")}
-            </Link>
-          </nav>
+            {/* Actions */}
+            <div className="flex shrink-0 items-center gap-2">
+              {!user && (
+                <Link
+                  href="/register"
+                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                >
+                  {t("joinClub")}
+                </Link>
+              )}
+              {isMember && !isAdmin && (
+                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                  Member
+                </span>
+              )}
+              {isAdmin && (
+                <Link
+                  href={`/club/${slug}?edit=1`}
+                  title="Edit club"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       {children}
