@@ -128,38 +128,36 @@ export default async function ClubPage({
 
         {/* Members */}
         <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">
-              {t("members")}
-              {isAdmin && pending.length > 0 && (
-                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                  {pending.length} pending
-                </span>
-              )}
-            </h2>
-            {isAdmin && (
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-900">{t("members")}</h2>
+            {isAdmin && pending.length > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                {pending.length} pending
+              </span>
+            )}
+          </div>
+
+          {isAdmin ? (
+            // Admin view: list with action buttons + invite section
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {pending.map((m: any) => (
+                  <MemberRow key={m.id} membership={m} isAdmin />
+                ))}
+                {activeMembers.map((m: any) => (
+                  <MemberRow key={m.id} membership={m} isAdmin />
+                ))}
+                {activeMembers.length === 0 && pending.length === 0 && (
+                  <p className="py-8 text-center text-sm text-gray-400">
+                    {t("noMembers")}
+                  </p>
+                )}
+              </div>
               <InviteButton
                 clubId={club.id}
                 existingCode={existingInvite?.code}
                 existingExpiresAt={existingInvite?.expires_at}
               />
-            )}
-          </div>
-
-          {isAdmin ? (
-            // Admin view: list with action buttons
-            <div className="space-y-2">
-              {pending.map((m: any) => (
-                <MemberRow key={m.id} membership={m} isAdmin />
-              ))}
-              {activeMembers.map((m: any) => (
-                <MemberRow key={m.id} membership={m} isAdmin />
-              ))}
-              {activeMembers.length === 0 && pending.length === 0 && (
-                <p className="py-8 text-center text-sm text-gray-400">
-                  {t("noMembers")}
-                </p>
-              )}
             </div>
           ) : (
             // Public view: avatar grid

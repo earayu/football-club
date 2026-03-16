@@ -74,48 +74,75 @@ export function InviteButton({
   const isExpired = expiresAt && new Date(expiresAt) < new Date();
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Invite Link</span>
+      </div>
+
       {code && !isExpired ? (
-        // Existing valid invite
-        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-          <div className="flex flex-col">
-            <code className="text-sm font-mono text-gray-700">{code}</code>
-            {expiresAt ? (
-              <span className="text-xs text-gray-400">
-                Expires {new Date(expiresAt).toLocaleDateString()}
-              </span>
-            ) : (
-              <span className="text-xs text-gray-400">No expiry</span>
-            )}
-          </div>
-          <Button variant="ghost" size="sm" onClick={handleCopy}>
-            {copied ? "Copied!" : t("copyLink")}
-          </Button>
-          <button
-            onClick={handleRevoke}
-            disabled={revoking}
-            className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+        <div className="space-y-3">
+          {/* URL display */}
+          <div
+            className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5 transition-colors hover:border-green-300"
+            onClick={handleCopy}
+            title="Click to copy"
           >
-            Revoke
-          </button>
+            <span className="truncate text-sm text-gray-600 font-mono">
+              {typeof window !== "undefined" ? getInviteUrl(code) : `…/join/${code}`}
+            </span>
+            <span className={`ml-3 shrink-0 text-xs font-medium ${copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}>
+              {copied ? "✓ Copied" : "Copy"}
+            </span>
+          </div>
+
+          {/* Meta + actions */}
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <span>
+              {expiresAt
+                ? `Expires ${new Date(expiresAt).toLocaleDateString()}`
+                : "Never expires"}
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setCode(null); setExpiresAt(null); }}
+                className="hover:text-gray-600"
+              >
+                Change expiry
+              </button>
+              <button
+                onClick={handleRevoke}
+                disabled={revoking}
+                className="text-red-400 hover:text-red-600 disabled:opacity-50"
+              >
+                {revoking ? "Revoking…" : "Revoke"}
+              </button>
+            </div>
+          </div>
         </div>
       ) : (
-        // No invite or expired — show generate controls
-        <div className="flex items-center gap-2">
-          <select
-            value={expiresIn ?? ""}
-            onChange={(e) => setExpiresIn((e.target.value || null) as ExpiresIn)}
-            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 focus:border-green-500 focus:outline-none"
-          >
-            {EXPIRES_OPTIONS.map((o) => (
-              <option key={o.label} value={o.value ?? ""}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <Button variant="secondary" size="sm" onClick={handleGenerate} isLoading={loading}>
-            {t("generateInvite")}
-          </Button>
+        <div className="space-y-3">
+          {isExpired && (
+            <p className="text-xs text-amber-600">This invite link has expired.</p>
+          )}
+          <div className="flex items-center gap-2">
+            <select
+              value={expiresIn ?? ""}
+              onChange={(e) => setExpiresIn((e.target.value || null) as ExpiresIn)}
+              className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 focus:border-green-500 focus:outline-none"
+            >
+              {EXPIRES_OPTIONS.map((o) => (
+                <option key={o.label} value={o.value ?? ""}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" onClick={handleGenerate} isLoading={loading}>
+              Generate
+            </Button>
+          </div>
         </div>
       )}
     </div>
