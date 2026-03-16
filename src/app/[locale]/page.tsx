@@ -20,7 +20,7 @@ export default function HomePage() {
             </p>
             <div className="mt-10">
               <Link
-                href="/register"
+                href="/create-club"
                 className="inline-block rounded-xl bg-white px-8 py-4 text-lg font-bold text-green-700 shadow-lg transition-all hover:bg-green-50 hover:shadow-xl"
               >
                 {t("cta")} →
@@ -115,10 +115,10 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-white">{t("cta")}</h2>
           <p className="mt-4 text-green-100">{t("subtitle")}</p>
           <Link
-            href="/register"
+            href="/create-club"
             className="mt-8 inline-block rounded-xl bg-white px-8 py-4 text-lg font-bold text-green-700 shadow-lg transition-all hover:bg-green-50 hover:shadow-xl"
           >
-            {tc("register")} →
+            {t("cta")} →
           </Link>
         </div>
       </section>
