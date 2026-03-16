@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export async function createAlbum(clubId: string, formData: FormData) {
   const supabase = await createClient();
@@ -10,24 +11,43 @@ export async function createAlbum(clubId: string, formData: FormData) {
 
   if (!user) return { error: "Not authenticated" };
 
+  const title = formData.get("title") as string;
+  const description = (formData.get("description") as string) || null;
+
+  if (!title?.trim()) return { error: "Album title is required" };
+
   const { data, error } = await supabase
     .from("albums")
     .insert({
       club_id: clubId,
-      title: formData.get("title") as string,
-      description: (formData.get("description") as string) || null,
+      title: title.trim(),
+      description,
       created_by: user.id,
     } as never)
     .select()
     .single();
 
   if (error) return { error: error.message };
-  return { success: true, album: data };
+
+  revalidatePath(`/[locale]/club/[slug]/manage/albums`, "page");
+  return { album: data };
 }
 
-export async function deleteAlbum(albumId: string) {
+export async function deleteAlbum(albumId: string, clubSlug: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from("albums").delete().eq("id", albumId);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("albums")
+    .delete()
+    .eq("id", albumId);
+
   if (error) return { error: error.message };
+
+  revalidatePath(`/[locale]/club/[slug]/manage/albums`, "page");
   return { success: true };
 }
