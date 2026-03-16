@@ -16,18 +16,30 @@ function generateCode(): string {
   return code;
 }
 
-export async function generateInviteLink(clubId: string) {
+export async function generateInviteLink(
+  clubId: string,
+  expiresIn?: "1d" | "7d" | "30d" | null
+) {
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
+  if (!user) return { error: "Not authenticated" };
+
+  // Delete existing invitations for this club (enforce max 1)
+  await supabase.from("invitations").delete().eq("club_id", clubId);
 
   const code = generateCode();
+
+  let expiresAt: string | null = null;
+  if (expiresIn) {
+    const days = expiresIn === "1d" ? 1 : expiresIn === "7d" ? 7 : 30;
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    expiresAt = d.toISOString();
+  }
 
   const { data, error } = await supabase
     .from("invitations")
@@ -35,15 +47,22 @@ export async function generateInviteLink(clubId: string) {
       club_id: clubId,
       code,
       created_by: user.id,
+      expires_at: expiresAt,
     } as never)
     .select()
     .single();
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
-  return { success: true, code: (data as any).code };
+  return { success: true, code: (data as any).code, expires_at: (data as any).expires_at };
+}
+
+export async function revokeInviteLink(clubId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  await supabase.from("invitations").delete().eq("club_id", clubId);
+  return { success: true };
 }
 
 export async function joinViaInvite(code: string) {

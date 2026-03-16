@@ -9,43 +9,114 @@ import {
   rejectMembership,
   removeMember,
 } from "@/lib/actions/membership";
-import { generateInviteLink } from "@/lib/actions/invitation";
+import { generateInviteLink, revokeInviteLink } from "@/lib/actions/invitation";
 
-export function InviteButton({ clubId }: { clubId: string }) {
+type ExpiresIn = "1d" | "7d" | "30d" | null;
+
+const EXPIRES_OPTIONS: { value: ExpiresIn; label: string }[] = [
+  { value: null, label: "No expiry" },
+  { value: "1d", label: "1 day" },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+];
+
+export function InviteButton({
+  clubId,
+  existingCode,
+  existingExpiresAt,
+}: {
+  clubId: string;
+  existingCode?: string | null;
+  existingExpiresAt?: string | null;
+}) {
   const t = useTranslations("manage");
-  const [code, setCode] = useState<string | null>(null);
+  const router = useRouter();
+  const [code, setCode] = useState<string | null>(existingCode ?? null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(existingExpiresAt ?? null);
+  const [expiresIn, setExpiresIn] = useState<ExpiresIn>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+
+  function getInviteUrl(c: string) {
+    const locale = window.location.pathname.split("/")[1];
+    return `${window.location.origin}/${locale}/join/${c}`;
+  }
 
   async function handleGenerate() {
     setLoading(true);
-    const result = await generateInviteLink(clubId);
-    if (result.code) setCode(result.code);
+    const result = await generateInviteLink(clubId, expiresIn);
+    if (result.code) {
+      setCode(result.code);
+      setExpiresAt(result.expires_at ?? null);
+    }
     setLoading(false);
+    router.refresh();
+  }
+
+  async function handleRevoke() {
+    if (!confirm("Revoke this invite link?")) return;
+    setRevoking(true);
+    await revokeInviteLink(clubId);
+    setCode(null);
+    setExpiresAt(null);
+    setRevoking(false);
+    router.refresh();
   }
 
   function handleCopy() {
     if (!code) return;
-    const url = `${window.location.origin}/${window.location.pathname.split("/")[1]}/join/${code}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(getInviteUrl(code));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const isExpired = expiresAt && new Date(expiresAt) < new Date();
+
   return (
-    <div className="flex items-center gap-3">
-      <Button variant="secondary" size="sm" onClick={handleGenerate} isLoading={loading}>
-        {t("generateInvite")}
-      </Button>
-      {code && (
-        <>
-          <code className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
-            {code}
-          </code>
+    <div className="flex flex-col items-end gap-2">
+      {code && !isExpired ? (
+        // Existing valid invite
+        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+          <div className="flex flex-col">
+            <code className="text-sm font-mono text-gray-700">{code}</code>
+            {expiresAt ? (
+              <span className="text-xs text-gray-400">
+                Expires {new Date(expiresAt).toLocaleDateString()}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-400">No expiry</span>
+            )}
+          </div>
           <Button variant="ghost" size="sm" onClick={handleCopy}>
-            {copied ? t("copied") : t("copyLink")}
+            {copied ? "Copied!" : t("copyLink")}
           </Button>
-        </>
+          <button
+            onClick={handleRevoke}
+            disabled={revoking}
+            className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+          >
+            Revoke
+          </button>
+        </div>
+      ) : (
+        // No invite or expired — show generate controls
+        <div className="flex items-center gap-2">
+          <select
+            value={expiresIn ?? ""}
+            onChange={(e) => setExpiresIn((e.target.value || null) as ExpiresIn)}
+            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 focus:border-green-500 focus:outline-none"
+          >
+            {EXPIRES_OPTIONS.map((o) => (
+              <option key={o.label} value={o.value ?? ""}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <Button variant="secondary" size="sm" onClick={handleGenerate} isLoading={loading}>
+            {t("generateInvite")}
+          </Button>
+        </div>
       )}
     </div>
   );

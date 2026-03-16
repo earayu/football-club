@@ -73,6 +73,19 @@ export default async function ClubPage({
     isAdmin = !!m;
   }
 
+  // Fetch existing invite for this club (admins only)
+  let existingInvite: { code: string; expires_at: string | null } | null = null;
+  if (isAdmin) {
+    const { data: inv } = await supabase
+      .from("invitations")
+      .select("code, expires_at")
+      .eq("club_id", club.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (inv) existingInvite = inv as any;
+  }
+
   // Fetch members (admins also see pending)
   const { data: memberships } = await supabase
     .from("memberships")
@@ -124,7 +137,13 @@ export default async function ClubPage({
                 </span>
               )}
             </h2>
-            {isAdmin && <InviteButton clubId={club.id} />}
+            {isAdmin && (
+              <InviteButton
+                clubId={club.id}
+                existingCode={existingInvite?.code}
+                existingExpiresAt={existingInvite?.expires_at}
+              />
+            )}
           </div>
 
           {isAdmin ? (
