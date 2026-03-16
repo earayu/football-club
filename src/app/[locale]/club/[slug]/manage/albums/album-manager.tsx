@@ -131,53 +131,49 @@ export function AlbumManager({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {albums.map((album) => (
-            <div
-              key={album.id}
-              className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
-            >
-              {album.cover_url ? (
-                <img
-                  src={album.cover_url}
-                  alt={album.title}
-                  className="aspect-video w-full object-cover"
-                />
-              ) : (
-                <div className="flex aspect-video items-center justify-center bg-gray-50 text-5xl text-gray-300">
-                  📷
-                </div>
-              )}
-
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 truncate">{album.title}</h3>
-                {album.description && (
-                  <p className="mt-1 text-xs text-gray-500 line-clamp-2">{album.description}</p>
+            <div key={album.id} className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+              {/* Delete button — top-right corner */}
+              <button
+                onClick={() => handleDelete(album.id)}
+                disabled={deletingId === album.id}
+                className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500 disabled:opacity-30"
+                title={tc("delete")}
+              >
+                {deletingId === album.id ? (
+                  <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 )}
-                <p className="mt-2 text-xs text-gray-400">
-                  {album.photoCount} photo{album.photoCount !== 1 ? "s" : ""}
-                </p>
+              </button>
 
-                <div className="mt-4 flex gap-2">
-                  <Link
-                    href={`/club/${clubSlug}/albums/${album.id}/upload`}
-                    className="flex-1 rounded-lg bg-green-600 px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-green-700"
-                  >
-                    {t("uploadPhotos")}
-                  </Link>
-                  <Link
-                    href={`/club/${clubSlug}/albums/${album.id}`}
-                    className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-center text-xs font-medium text-gray-600 hover:bg-gray-50"
-                  >
-                    View
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(album.id)}
-                    disabled={deletingId === album.id}
-                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {tc("delete")}
-                  </button>
+              {/* Card is fully clickable → album detail */}
+              <Link href={`/club/${clubSlug}/albums/${album.id}`} className="block">
+                {album.cover_url ? (
+                  <img
+                    src={album.cover_url}
+                    alt={album.title}
+                    className="aspect-video w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex aspect-video items-center justify-center bg-gray-50 text-5xl text-gray-300">
+                    📷
+                  </div>
+                )}
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-900 truncate">{album.title}</h3>
+                  {album.description && (
+                    <p className="mt-1 text-xs text-gray-500 line-clamp-2">{album.description}</p>
+                  )}
+                  <p className="mt-2 text-xs text-gray-400">
+                    {album.photoCount} photo{album.photoCount !== 1 ? "s" : ""}
+                  </p>
                 </div>
-              </div>
+              </Link>
             </div>
           ))}
         </div>
