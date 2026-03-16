@@ -23,9 +23,17 @@ export async function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="text-sm text-gray-600">
-                {user.user_metadata?.display_name ?? user.email}
-              </span>
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
+                  {(user.user_metadata?.display_name ?? user.email ?? "?")[0].toUpperCase()}
+                </span>
+                <span className="hidden sm:inline">
+                  {user.user_metadata?.display_name ?? user.email}
+                </span>
+              </Link>
               <form action={logout}>
                 <button
                   type="submit"

@@ -1,9 +1,14 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-export default function HomePage() {
-  const t = useTranslations("landing");
-  const tc = useTranslations("common");
+export default async function HomePage() {
+  const t = await getTranslations("landing");
+  const tc = await getTranslations("common");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
     <div>
@@ -18,13 +23,30 @@ export default function HomePage() {
             <p className="mx-auto mt-6 max-w-2xl text-lg text-green-100 sm:text-xl">
               {t("subtitle")}
             </p>
-            <div className="mt-10">
-              <Link
-                href="/create-club"
-                className="inline-block rounded-xl bg-white px-8 py-4 text-lg font-bold text-green-700 shadow-lg transition-all hover:bg-green-50 hover:shadow-xl"
-              >
-                {t("cta")} →
-              </Link>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+              {user ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="inline-block rounded-xl bg-white px-8 py-4 text-lg font-bold text-green-700 shadow-lg transition-all hover:bg-green-50 hover:shadow-xl"
+                  >
+                    My Dashboard →
+                  </Link>
+                  <Link
+                    href="/create-club"
+                    className="inline-block rounded-xl border-2 border-white/60 px-8 py-4 text-lg font-bold text-white transition-all hover:border-white hover:bg-white/10"
+                  >
+                    + {t("cta")}
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href="/create-club"
+                  className="inline-block rounded-xl bg-white px-8 py-4 text-lg font-bold text-green-700 shadow-lg transition-all hover:bg-green-50 hover:shadow-xl"
+                >
+                  {t("cta")} →
+                </Link>
+              )}
             </div>
           </div>
         </div>
