@@ -1,9 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/types/database";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-
-type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
+import { InviteButton, MemberRow } from "./member-actions";
 
 export default async function MembersPage({
   params,
@@ -12,66 +10,69 @@ export default async function MembersPage({
 }) {
   const { slug } = await params;
   const supabase = await createClient();
-  const t = await getTranslations("club");
-  const tm = await getTranslations("member");
+  const t = await getTranslations("manage");
 
-  const { data } = await supabase
+  const { data: club } = await supabase
     .from("clubs")
     .select("id")
     .eq("slug", slug)
     .single();
 
-  const club = data as Pick<ClubRow, "id"> | null;
   if (!club) notFound();
 
-  const { data: members } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isAdmin = false;
+  if (user) {
+    const { data: m } = await supabase
+      .from("memberships")
+      .select("role, status")
+      .eq("club_id", (club as any).id)
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .eq("status", "active")
+      .single();
+    isAdmin = !!m;
+  }
+
+  const { data: memberships } = await supabase
     .from("memberships")
     .select("*, profiles(*)")
-    .eq("club_id", club.id)
-    .eq("status", "active")
+    .eq("club_id", (club as any).id)
+    .in("status", isAdmin ? ["active", "pending"] : ["active"])
     .order("joined_at", { ascending: true });
 
+  const pending = (memberships ?? []).filter((m: any) => m.status === "pending");
+  const active = (memberships ?? []).filter((m: any) => m.status === "active");
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <h2 className="text-lg font-semibold text-gray-900">{t("members")}</h2>
-      {members && members.length > 0 ? (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {members.map((m: any) => (
-            <div
-              key={m.id}
-              className="flex items-center gap-4 rounded-lg border border-gray-200 p-4 transition-colors hover:bg-gray-50"
-            >
-              {m.profiles?.avatar_url ? (
-                <img
-                  src={m.profiles.avatar_url}
-                  alt={m.profiles.display_name}
-                  className="h-14 w-14 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-200 text-xl text-gray-500">
-                  👤
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-gray-900">
-                  {m.profiles?.display_name || "—"}
-                </p>
-                <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                  {m.number && <span>#{m.number}</span>}
-                  {m.position && <span>{tm(`positions.${m.position}`)}</span>}
-                  {m.role === "admin" && (
-                    <span className="rounded bg-green-100 px-1.5 py-0.5 text-green-700">
-                      Admin
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      {isAdmin && (
+        <div className="mb-6 flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            {pending.length > 0 && (
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                {pending.length} pending
+              </span>
+            )}
+          </p>
+          <InviteButton clubId={(club as any).id} />
         </div>
-      ) : (
-        <p className="mt-4 text-sm text-gray-500">{t("noMembers")}</p>
       )}
+
+      <div className="space-y-2">
+        {pending.map((m: any) => (
+          <MemberRow key={m.id} membership={m} isAdmin={isAdmin} />
+        ))}
+        {active.map((m: any) => (
+          <MemberRow key={m.id} membership={m} isAdmin={isAdmin} />
+        ))}
+        {active.length === 0 && pending.length === 0 && (
+          <p className="py-12 text-center text-sm text-gray-400">No members yet.</p>
+        )}
+      </div>
     </div>
   );
 }

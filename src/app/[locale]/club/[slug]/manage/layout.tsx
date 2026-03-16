@@ -48,32 +48,16 @@ export default async function ManageLayout({
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <div className="flex gap-8">
-        <nav className="hidden w-48 shrink-0 md:block">
-          <div className="space-y-1">
-            <Link
-              href={`/club/${slug}/manage/info`}
-              className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              {t("clubInfo")}
-            </Link>
-            <Link
-              href={`/club/${slug}/manage/members`}
-              className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              {t("memberManagement")}
-            </Link>
-            <Link
-              href={`/club/${slug}/manage/albums`}
-              className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              {t("albumManagement")}
-            </Link>
-          </div>
-        </nav>
-        <div className="flex-1">{children}</div>
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="mb-6 flex items-center gap-2">
+        <Link
+          href={`/club/${slug}`}
+          className="text-sm text-gray-500 hover:text-gray-700"
+        >
+          ← Back to club
+        </Link>
       </div>
+      {children}
     </div>
   );
 }

@@ -83,16 +83,17 @@ export default async function ClubLayout({
                 <span>{t("memberCount", { count: memberCount || 0 })}</span>
               </div>
             </div>
-            <div className="flex gap-2">
-              {isAdmin && (
-                <Link
-                  href={`/club/${slug}/manage`}
-                  className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-                >
-                  {t("manage")}
-                </Link>
-              )}
-            </div>
+            {isAdmin && (
+              <Link
+                href={`/club/${slug}/manage/info`}
+                title="Edit club info"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </Link>
+            )}
           </div>
 
           <nav className="mt-6 flex gap-6 border-t border-gray-100 pt-4">
