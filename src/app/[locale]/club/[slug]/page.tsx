@@ -1,9 +1,38 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/types/database";
+import { generateClubJsonLd } from "@/lib/seo";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: club } = await supabase
+    .from("clubs")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (!club) return { title: "Club Not Found" };
+
+  const row = club as ClubRow;
+  return {
+    title: `${row.name} | Football Club Portal`,
+    description: row.description || `${row.name} on Football Club Portal`,
+    openGraph: {
+      title: row.name,
+      description: row.description || undefined,
+      images: row.badge_url ? [{ url: row.badge_url }] : [],
+    },
+  };
+}
 
 export default async function ClubHomePage({
   params,
@@ -40,7 +69,14 @@ export default async function ClubHomePage({
     .limit(4);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(generateClubJsonLd(club)),
+        }}
+      />
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <section>
         <h2 className="text-lg font-semibold text-gray-900">{t("members")}</h2>
         {members && members.length > 0 ? (
@@ -106,5 +142,6 @@ export default async function ClubHomePage({
         </section>
       )}
     </div>
+    </>
   );
 }

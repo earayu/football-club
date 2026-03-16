@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://footballclub.app/sitemap.xml
