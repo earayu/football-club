@@ -100,7 +100,7 @@ export default async function ClubPage({
   // Fetch albums
   const { data: albumsRaw } = await supabase
     .from("albums")
-    .select("id, title, description, cover_url, created_at, photos(id)")
+    .select("id, title, description, cover_url, created_at, photos(id, url)")
     .eq("club_id", club.id)
     .order("created_at", { ascending: false });
 
@@ -108,7 +108,7 @@ export default async function ClubPage({
     id: a.id,
     title: a.title,
     description: a.description,
-    cover_url: a.cover_url,
+    cover_url: a.cover_url || a.photos?.[0]?.url || null,
     created_at: a.created_at,
     photoCount: a.photos?.length ?? 0,
   }));

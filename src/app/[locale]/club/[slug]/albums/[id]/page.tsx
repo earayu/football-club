@@ -70,7 +70,12 @@ export default async function AlbumDetailPage({
         )}
       </div>
       <div className="mt-6">
-        <PhotoGrid photos={a.photos || []} />
+        <PhotoGrid
+          photos={a.photos || []}
+          albumId={id}
+          coverUrl={a.cover_url}
+          isAdmin={isAdmin}
+        />
       </div>
     </div>
   );
