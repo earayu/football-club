@@ -72,6 +72,12 @@ export async function createClub(formData: FormData) {
     return { error: memberError.message };
   }
 
+  await supabase.from("albums").insert({
+    club_id: club.id,
+    title: "Photos",
+    created_by: user.id,
+  } as never);
+
   redirect({ href: `/club/${club.slug}`, locale });
 }
 
