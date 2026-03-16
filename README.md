@@ -1,14 +1,16 @@
 # Football Club Portal
 
-A free, open-source portal platform for amateur football clubs worldwide. Any private FC can create a public-facing club page with player roster, photo albums, and club info — in minutes.
+A free, open-source portal platform for amateur football clubs worldwide. Any private FC can create a public-facing club page with member profiles, photo albums, and club info — in minutes. Members can join, manage their own profiles, and share photos.
 
 ## Features (MVP)
 
 - **Club Profile** — Club name, badge, founding date, description
-- **Player Roster** — Player name, number, position, photo, and match stats (appearances, goals, assists)
-- **Photo Albums** — Image galleries organized by album, with support for external links (Google Photos, Flickr) and embedded videos (YouTube, Bilibili)
-- **Admin Dashboard** — Authenticated admin panel for content management
+- **Member System** — Users register accounts, join clubs via invite links or apply to join
+- **Member Profiles** — Avatar, name, jersey number, position (all optional, per-club)
+- **Photo Albums** — Shared photo galleries, any member can upload
+- **Admin Dashboard** — Club management (info, members, albums)
 - **Multi-Tenant** — Each club gets its own page at `/club/[slug]`
+- **i18n** — English, Chinese, Spanish
 - **SEO Optimized** — SSR pages with structured data for organic growth
 
 ## Tech Stack
@@ -17,7 +19,8 @@ A free, open-source portal platform for amateur football clubs worldwide. Any pr
 - **Backend**: Next.js Server Actions
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
-- **Storage**: Supabase Storage (thumbnails) + external links (full-size media)
+- **Storage**: Supabase Storage (avatars, photos)
+- **i18n**: next-intl
 - **Deployment**: Vercel (free tier)
 
 ## Getting Started
@@ -39,15 +42,19 @@ pnpm dev
 ```
 football-club/
 ├── src/
-│   ├── app/              # Next.js App Router pages
-│   │   ├── (public)/     # Public-facing club pages
-│   │   └── admin/        # Admin dashboard
-│   ├── components/       # Shared UI components
-│   ├── lib/              # Utilities, Supabase client, types
-│   └── styles/           # Global styles
-├── public/               # Static assets
-├── supabase/             # Database migrations & seed data
-└── docs/                 # Design docs & plans
+│   ├── app/
+│   │   ├── [locale]/         # i18n locale prefix
+│   │   │   ├── (public)/     # Public-facing pages
+│   │   │   ├── club/[slug]/  # Club pages (public + manage)
+│   │   │   ├── profile/      # User profile
+│   │   │   └── join/[code]/  # Invitation link
+│   ├── components/           # Shared UI components
+│   ├── lib/                  # Utilities, Supabase client, types
+│   ├── messages/             # i18n translation files (en, zh, es)
+│   └── styles/               # Global styles
+├── public/                   # Static assets
+├── supabase/                 # Database migrations & seed data
+└── docs/                     # Design docs & plans
 ```
 
 ## License
