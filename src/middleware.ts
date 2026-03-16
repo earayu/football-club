@@ -6,9 +6,9 @@ import { routing } from "@/i18n/routing";
 const intlMiddleware = createMiddleware(routing);
 
 export async function middleware(request: NextRequest) {
-  const response = intlMiddleware(request);
-  await updateSession(request);
-  return response;
+  const intlResponse = intlMiddleware(request);
+  const supabaseResponse = await updateSession(request, intlResponse);
+  return supabaseResponse;
 }
 
 export const config = {
