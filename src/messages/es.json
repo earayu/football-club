@@ -1,0 +1,115 @@
+{
+  "common": {
+    "appName": "Portal de Club de Fútbol",
+    "login": "Iniciar Sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar Sesión",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Cargando...",
+    "error": "Algo salió mal",
+    "back": "Volver"
+  },
+  "landing": {
+    "title": "Tu Club, Tu Identidad",
+    "subtitle": "Crea un hermoso hogar en línea para tu club de fútbol amateur — gratis, en minutos.",
+    "cta": "Crea Tu Club",
+    "features": {
+      "profile": "Perfil del Club",
+      "profileDesc": "Muestra tu club con escudo, nombre e historia.",
+      "members": "Lista de Miembros",
+      "membersDesc": "Todos en el equipo, con su propia tarjeta de perfil.",
+      "albums": "Álbumes de Fotos",
+      "albumsDesc": "Comparte fotos de partidos y recuerdos del equipo."
+    },
+    "howItWorks": "Cómo Funciona",
+    "step1": "Regístrate gratis",
+    "step1Desc": "Crea tu cuenta en segundos.",
+    "step2": "Crea tu club",
+    "step2Desc": "Agrega el nombre, escudo e historia de tu club.",
+    "step3": "Invita a tu equipo",
+    "step3Desc": "Comparte el enlace y forma tu plantilla."
+  },
+  "auth": {
+    "loginTitle": "Bienvenido de Nuevo",
+    "registerTitle": "Únete al Juego",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "displayName": "Nombre para mostrar",
+    "noAccount": "¿No tienes cuenta?",
+    "hasAccount": "¿Ya tienes cuenta?"
+  },
+  "club": {
+    "members": "Miembros",
+    "albums": "Álbumes",
+    "about": "Acerca de",
+    "founded": "Fundado en",
+    "joinClub": "Solicitar Unirse",
+    "createClub": "Crea Tu Club",
+    "pendingApproval": "Aprobación Pendiente",
+    "manage": "Gestionar Club",
+    "clubName": "Nombre del Club",
+    "clubSlug": "URL del Club",
+    "clubDescription": "Descripción",
+    "clubBadge": "Escudo del Club",
+    "foundedDate": "Fecha de Fundación",
+    "noMembers": "Aún no hay miembros",
+    "memberCount": "{count} miembros"
+  },
+  "manage": {
+    "clubInfo": "Info del Club",
+    "memberManagement": "Miembros",
+    "albumManagement": "Álbumes",
+    "inviteLink": "Enlace de Invitación",
+    "generateInvite": "Generar Enlace de Invitación",
+    "copyLink": "Copiar Enlace",
+    "copied": "¡Copiado!",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "remove": "Eliminar",
+    "pendingRequests": "Solicitudes Pendientes",
+    "activeMembers": "Miembros Activos",
+    "noRequests": "Sin solicitudes pendientes"
+  },
+  "profile": {
+    "editProfile": "Editar Perfil",
+    "displayName": "Nombre para mostrar",
+    "bio": "Biografía",
+    "avatar": "Avatar",
+    "myClubs": "Mis Clubes",
+    "noClubs": "Aún no te has unido a ningún club."
+  },
+  "member": {
+    "number": "Dorsal",
+    "position": "Posición",
+    "editMyInfo": "Editar Mi Info",
+    "positions": {
+      "GK": "Portero",
+      "DF": "Defensa",
+      "MF": "Centrocampista",
+      "FW": "Delantero"
+    }
+  },
+  "album": {
+    "createAlbum": "Crear Álbum",
+    "albumTitle": "Título del Álbum",
+    "description": "Descripción",
+    "uploadPhotos": "Subir Fotos",
+    "noPhotos": "Aún no hay fotos",
+    "noAlbums": "Aún no hay álbumes",
+    "selectFiles": "Selecciona archivos o arrastra y suelta",
+    "uploading": "Subiendo..."
+  },
+  "invitation": {
+    "joinViaInvite": "Has sido invitado a unirte a",
+    "joinNow": "Unirse Ahora",
+    "invalidCode": "Este enlace de invitación no es válido o ha expirado.",
+    "alreadyMember": "Ya eres miembro de este club."
+  },
+  "footer": {
+    "createYourClub": "¡Crea la página de tu propio club — es gratis!",
+    "poweredBy": "Portal de Club de Fútbol"
+  }
+}

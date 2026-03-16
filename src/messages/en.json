@@ -1,0 +1,115 @@
+{
+  "common": {
+    "appName": "Football Club Portal",
+    "login": "Log In",
+    "register": "Sign Up",
+    "logout": "Log Out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "back": "Back"
+  },
+  "landing": {
+    "title": "Your Club, Your Identity",
+    "subtitle": "Create a beautiful online home for your amateur football club — free, in minutes.",
+    "cta": "Create Your Club",
+    "features": {
+      "profile": "Club Profile",
+      "profileDesc": "Showcase your club with badge, name, and story.",
+      "members": "Member Roster",
+      "membersDesc": "Everyone on the team, with their own profile card.",
+      "albums": "Photo Albums",
+      "albumsDesc": "Share match day photos and team memories."
+    },
+    "howItWorks": "How It Works",
+    "step1": "Sign up for free",
+    "step1Desc": "Create your account in seconds.",
+    "step2": "Create your club",
+    "step2Desc": "Add your club name, badge, and story.",
+    "step3": "Invite your team",
+    "step3Desc": "Share the link and build your squad."
+  },
+  "auth": {
+    "loginTitle": "Welcome Back",
+    "registerTitle": "Join the Game",
+    "email": "Email",
+    "password": "Password",
+    "displayName": "Display Name",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+  "club": {
+    "members": "Members",
+    "albums": "Albums",
+    "about": "About",
+    "founded": "Founded",
+    "joinClub": "Apply to Join",
+    "createClub": "Create Your Club",
+    "pendingApproval": "Pending Approval",
+    "manage": "Manage Club",
+    "clubName": "Club Name",
+    "clubSlug": "Club URL",
+    "clubDescription": "Description",
+    "clubBadge": "Club Badge",
+    "foundedDate": "Founded Date",
+    "noMembers": "No members yet",
+    "memberCount": "{count} members"
+  },
+  "manage": {
+    "clubInfo": "Club Info",
+    "memberManagement": "Members",
+    "albumManagement": "Albums",
+    "inviteLink": "Invite Link",
+    "generateInvite": "Generate Invite Link",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "approve": "Approve",
+    "reject": "Reject",
+    "remove": "Remove",
+    "pendingRequests": "Pending Requests",
+    "activeMembers": "Active Members",
+    "noRequests": "No pending requests"
+  },
+  "profile": {
+    "editProfile": "Edit Profile",
+    "displayName": "Display Name",
+    "bio": "Bio",
+    "avatar": "Avatar",
+    "myClubs": "My Clubs",
+    "noClubs": "You haven't joined any clubs yet."
+  },
+  "member": {
+    "number": "Jersey #",
+    "position": "Position",
+    "editMyInfo": "Edit My Info",
+    "positions": {
+      "GK": "Goalkeeper",
+      "DF": "Defender",
+      "MF": "Midfielder",
+      "FW": "Forward"
+    }
+  },
+  "album": {
+    "createAlbum": "Create Album",
+    "albumTitle": "Album Title",
+    "description": "Description",
+    "uploadPhotos": "Upload Photos",
+    "noPhotos": "No photos yet",
+    "noAlbums": "No albums yet",
+    "selectFiles": "Select files or drag and drop",
+    "uploading": "Uploading..."
+  },
+  "invitation": {
+    "joinViaInvite": "You've been invited to join",
+    "joinNow": "Join Now",
+    "invalidCode": "This invite link is invalid or expired.",
+    "alreadyMember": "You are already a member of this club."
+  },
+  "footer": {
+    "createYourClub": "Create your own club page — it's free!",
+    "poweredBy": "Football Club Portal"
+  }
+}

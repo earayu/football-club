@@ -1,0 +1,115 @@
+{
+  "common": {
+    "appName": "足球俱乐部门户",
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "loading": "加载中...",
+    "error": "出错了",
+    "back": "返回"
+  },
+  "landing": {
+    "title": "你的球队，你的身份",
+    "subtitle": "为你的业余足球俱乐部创建一个漂亮的线上主页——免费，只需几分钟。",
+    "cta": "创建球队",
+    "features": {
+      "profile": "球队主页",
+      "profileDesc": "展示你的队徽、队名和故事。",
+      "members": "成员列表",
+      "membersDesc": "每位队员都有自己的个人卡片。",
+      "albums": "照片相册",
+      "albumsDesc": "分享比赛日照片和团队记忆。"
+    },
+    "howItWorks": "如何使用",
+    "step1": "免费注册",
+    "step1Desc": "几秒钟创建你的账号。",
+    "step2": "创建球队",
+    "step2Desc": "添加队名、队徽和球队故事。",
+    "step3": "邀请队友",
+    "step3Desc": "分享链接，组建你的球队。"
+  },
+  "auth": {
+    "loginTitle": "欢迎回来",
+    "registerTitle": "加入球场",
+    "email": "邮箱",
+    "password": "密码",
+    "displayName": "显示名称",
+    "noAccount": "还没有账号？",
+    "hasAccount": "已有账号？"
+  },
+  "club": {
+    "members": "成员",
+    "albums": "相册",
+    "about": "关于",
+    "founded": "成立于",
+    "joinClub": "申请加入",
+    "createClub": "创建球队",
+    "pendingApproval": "等待审批",
+    "manage": "管理球队",
+    "clubName": "球队名称",
+    "clubSlug": "球队链接",
+    "clubDescription": "简介",
+    "clubBadge": "队徽",
+    "foundedDate": "成立日期",
+    "noMembers": "暂无成员",
+    "memberCount": "{count} 位成员"
+  },
+  "manage": {
+    "clubInfo": "球队信息",
+    "memberManagement": "成员管理",
+    "albumManagement": "相册管理",
+    "inviteLink": "邀请链接",
+    "generateInvite": "生成邀请链接",
+    "copyLink": "复制链接",
+    "copied": "已复制！",
+    "approve": "通过",
+    "reject": "拒绝",
+    "remove": "移除",
+    "pendingRequests": "待审批申请",
+    "activeMembers": "活跃成员",
+    "noRequests": "暂无待审批申请"
+  },
+  "profile": {
+    "editProfile": "编辑资料",
+    "displayName": "显示名称",
+    "bio": "个人简介",
+    "avatar": "头像",
+    "myClubs": "我的球队",
+    "noClubs": "你还没有加入任何球队。"
+  },
+  "member": {
+    "number": "球衣号码",
+    "position": "位置",
+    "editMyInfo": "编辑我的信息",
+    "positions": {
+      "GK": "守门员",
+      "DF": "后卫",
+      "MF": "中场",
+      "FW": "前锋"
+    }
+  },
+  "album": {
+    "createAlbum": "创建相册",
+    "albumTitle": "相册标题",
+    "description": "描述",
+    "uploadPhotos": "上传照片",
+    "noPhotos": "还没有照片",
+    "noAlbums": "还没有相册",
+    "selectFiles": "选择文件或拖拽上传",
+    "uploading": "上传中..."
+  },
+  "invitation": {
+    "joinViaInvite": "你被邀请加入",
+    "joinNow": "立即加入",
+    "invalidCode": "邀请链接无效或已过期。",
+    "alreadyMember": "你已经是该球队的成员了。"
+  },
+  "footer": {
+    "createYourClub": "为你的球队也创建一个主页——完全免费！",
+    "poweredBy": "足球俱乐部门户"
+  }
+}
