@@ -117,7 +117,7 @@ export default async function ClubHomePage({
             {albums.map((album: any) => (
               <a
                 key={album.id}
-                href={`albums/${album.id}`}
+                href={`/club/${slug}/albums/${album.id}`}
                 className="group overflow-hidden rounded-lg border border-gray-200"
               >
                 {album.cover_url ? (
