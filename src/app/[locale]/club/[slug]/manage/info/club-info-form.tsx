@@ -6,7 +6,13 @@ import { Input } from "@/components/ui/input";
 import { updateClub, uploadBadge } from "@/lib/actions/club";
 import { useState, useRef } from "react";
 
-export function ClubInfoForm({ club }: { club: any }) {
+export function ClubInfoForm({
+  club,
+  onSaved,
+}: {
+  club: any;
+  onSaved?: () => void;
+}) {
   const t = useTranslations("club");
   const tc = useTranslations("common");
   const [badgeUrl, setBadgeUrl] = useState(club.badge_url || "");
@@ -38,6 +44,7 @@ export function ClubInfoForm({ club }: { club: any }) {
       setMessage({ type: "error", text: result.error });
     } else {
       setMessage({ type: "success", text: "Saved!" });
+      onSaved?.();
     }
     setIsSaving(false);
   }

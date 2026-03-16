@@ -5,9 +5,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { ClubInfoForm } from "./manage/info/club-info-form";
 import { AlbumManager } from "./manage/albums/album-manager";
 import { InviteButton, MemberRow } from "./members/member-actions";
+import { ClubInfoSection } from "./club-info-section";
 
 type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
 
@@ -39,13 +39,10 @@ export async function generateMetadata({
 
 export default async function ClubPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ edit?: string }>;
 }) {
   const { slug } = await params;
-  const { edit } = await searchParams;
   const supabase = await createClient();
   const t = await getTranslations("club");
   const tm = await getTranslations("member");
@@ -76,9 +73,7 @@ export default async function ClubPage({
     isAdmin = !!m;
   }
 
-  const isEditMode = isAdmin && edit === "1";
-
-  // Fetch members
+  // Fetch members (admins also see pending)
   const { data: memberships } = await supabase
     .from("memberships")
     .select("*, profiles(*)")
@@ -115,48 +110,25 @@ export default async function ClubPage({
       />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-10">
 
-        {/* Edit mode banner */}
-        {isEditMode && (
-          <div className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3">
-            <span className="text-sm font-medium text-green-700">Editing club</span>
-            <Link
-              href={`/club/${slug}`}
-              className="text-sm font-medium text-green-700 hover:text-green-900"
-            >
-              ✕ Done editing
-            </Link>
-          </div>
-        )}
+        {/* Club description + inline edit for admins */}
+        <ClubInfoSection club={club} isAdmin={isAdmin} />
 
-        {/* Club info: view or edit */}
-        {isEditMode ? (
-          <section>
-            <h2 className="mb-5 text-lg font-bold text-gray-900">Club Info</h2>
-            <ClubInfoForm club={club} />
-          </section>
-        ) : (
-          club.description && (
-            <section>
-              <p className="text-gray-600">{club.description}</p>
-            </section>
-          )
-        )}
-
-        {/* Members section */}
+        {/* Members */}
         <section>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900">
               {t("members")}
-              {pending.length > 0 && isEditMode && (
+              {isAdmin && pending.length > 0 && (
                 <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
                   {pending.length} pending
                 </span>
               )}
             </h2>
-            {isEditMode && <InviteButton clubId={club.id} />}
+            {isAdmin && <InviteButton clubId={club.id} />}
           </div>
 
-          {isEditMode ? (
+          {isAdmin ? (
+            // Admin view: list with action buttons
             <div className="space-y-2">
               {pending.map((m: any) => (
                 <MemberRow key={m.id} membership={m} isAdmin />
@@ -165,10 +137,13 @@ export default async function ClubPage({
                 <MemberRow key={m.id} membership={m} isAdmin />
               ))}
               {activeMembers.length === 0 && pending.length === 0 && (
-                <p className="py-8 text-center text-sm text-gray-400">{t("noMembers")}</p>
+                <p className="py-8 text-center text-sm text-gray-400">
+                  {t("noMembers")}
+                </p>
               )}
             </div>
           ) : (
+            // Public view: avatar grid
             activeMembers.length > 0 ? (
               <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
                 {activeMembers.map((m: any) => (
@@ -201,17 +176,17 @@ export default async function ClubPage({
           )}
         </section>
 
-        {/* Albums section */}
+        {/* Albums */}
         <section>
-          {isEditMode ? (
-            <AlbumManager
-              clubId={club.id}
-              clubSlug={slug}
-              albums={albums}
-            />
+          {isAdmin ? (
+            // Admin view: full album manager with create/delete/upload
+            <AlbumManager clubId={club.id} clubSlug={slug} albums={albums} />
           ) : (
+            // Public view: browse only
             <>
-              <h2 className="mb-4 text-lg font-bold text-gray-900">{t("albums")}</h2>
+              <h2 className="mb-4 text-lg font-bold text-gray-900">
+                {t("albums")}
+              </h2>
               {albums.length > 0 ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                   {albums.map((album) => (
