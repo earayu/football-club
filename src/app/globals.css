@@ -1,44 +1,43 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --background: #fafaf9;
-  --foreground: #0c1810;
-  --green-deep: #0a4f2e;
-  --green-mid: #15803d;
-  --green-bright: #22c55e;
+  --bg: #f9fafb;
+  --fg: #0d1117;
+  --green: #15803d;
+  --green-light: #dcfce7;
+  --border: rgba(15, 23, 42, 0.08);
+  --shadow-card: 0 1px 3px rgba(0,0,0,.06), 0 8px 24px -4px rgba(0,0,0,.05);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  font-feature-settings: "cv02","cv03","cv04","cv11";
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Warmer selection */
 ::selection {
-  background-color: #bbf7d0;
+  background: #bbf7d0;
   color: #14532d;
 }
 
-/* Focus ring */
 :focus-visible {
-  outline: 2px solid #16a34a;
+  outline: 2px solid var(--green);
   outline-offset: 2px;
 }
 
@@ -48,10 +47,12 @@ body {
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-/* Transitions */
-a, button { transition-property: color, background-color, border-color, box-shadow, opacity, transform; transition-duration: 150ms; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-
 img { max-width: 100%; height: auto; }
 
-/* Textarea auto-grow support */
+/* Native field sizing for textareas */
 textarea { field-sizing: content; }
+
+/* Tinted diffusion shadow */
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}

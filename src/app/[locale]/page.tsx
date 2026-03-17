@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ArrowRight, Users, Notebook, Globe } from "@phosphor-icons/react/dist/ssr";
 
 export default async function HomePage() {
   const t = await getTranslations("landing");
@@ -8,181 +9,193 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <div className="overflow-hidden">
-
-      {/* ── HERO ────────────────────────────────────────────────── */}
-      <section className="relative min-h-[88vh] overflow-hidden bg-[#0a2e1a]">
-        {/* Pitch texture overlay */}
-        <div className="pointer-events-none absolute inset-0">
-          {/* Subtle grass stripes */}
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute inset-y-0"
-              style={{
-                left: `${i * 10}%`,
-                width: "10%",
-                backgroundColor: i % 2 === 0 ? "rgba(255,255,255,0.015)" : "transparent",
-              }}
-            />
-          ))}
-          {/* Center circle */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full border border-white/5" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[900px] w-[900px] rounded-full border border-white/[0.03]" />
-          {/* Center spot */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-white/10" />
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#0a2e1a]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a2e1a]/60 via-transparent to-[#0a2e1a]/60" />
+    <div>
+      {/* ── HERO — left-aligned split screen ─────────────────────── */}
+      <section className="relative min-h-[100dvh] overflow-hidden bg-zinc-950">
+        {/* Right side: pitch SVG visual */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-[0.07]">
+          <svg viewBox="0 0 400 600" className="h-full w-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Pitch markings */}
+            <rect x="40" y="40" width="320" height="520" stroke="white" strokeWidth="2"/>
+            <line x1="40" y1="300" x2="360" y2="300" stroke="white" strokeWidth="1.5"/>
+            <circle cx="200" cy="300" r="60" stroke="white" strokeWidth="1.5"/>
+            <circle cx="200" cy="300" r="3" fill="white"/>
+            <rect x="120" y="40" width="160" height="80" stroke="white" strokeWidth="1.5"/>
+            <rect x="160" y="40" width="80" height="40" stroke="white" strokeWidth="1.5"/>
+            <rect x="120" y="480" width="160" height="80" stroke="white" strokeWidth="1.5"/>
+            <rect x="160" y="520" width="80" height="40" stroke="white" strokeWidth="1.5"/>
+            <circle cx="200" cy="120" r="4" fill="white"/>
+            <circle cx="200" cy="480" r="4" fill="white"/>
+            <path d="M120 120 a80 80 0 0 0 160 0" stroke="white" strokeWidth="1.5" fill="none"/>
+            <path d="M120 480 a80 80 0 0 1 160 0" stroke="white" strokeWidth="1.5" fill="none"/>
+          </svg>
         </div>
 
-        <div className="relative flex min-h-[88vh] flex-col items-center justify-center px-4 py-24 text-center">
-          {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-green-800/60 bg-green-900/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-green-400 backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-            Free for amateur clubs
-          </div>
+        {/* Gradient overlay */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/95 to-zinc-950/40" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
 
-          <h1 className="max-w-4xl text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl xl:text-8xl">
-            {t("title")}
-          </h1>
+        {/* Content — left aligned */}
+        <div className="relative flex min-h-[100dvh] flex-col justify-center px-5 py-24 sm:px-8 lg:px-16 xl:px-24">
+          <div className="max-w-2xl">
+            {/* Pill label */}
+            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-green-800/50 bg-green-950/60 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-widest text-green-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+              Free for every club
+            </div>
 
-          <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-white/60 sm:text-xl">
-            {t("subtitle")}
-          </p>
+            <h1 className="text-5xl font-black leading-[1.03] tracking-tight text-white sm:text-6xl lg:text-7xl">
+              {t("title")}
+            </h1>
 
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
-            {user ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="group flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-bold text-[#0a2e1a] shadow-2xl shadow-black/30 transition hover:bg-green-50 active:scale-[0.98]"
-                >
-                  My Dashboard
-                  <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                </Link>
-                <Link
-                  href="/create-club"
-                  className="rounded-xl border border-white/20 bg-white/10 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
-                >
-                  + {t("cta")}
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/register"
-                  className="group flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-bold text-[#0a2e1a] shadow-2xl shadow-black/30 transition hover:bg-green-50 active:scale-[0.98]"
-                >
-                  {t("cta")}
-                  <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                </Link>
-                <Link
-                  href="/login"
-                  className="rounded-xl px-8 py-4 text-base font-medium text-white/60 transition hover:text-white"
-                >
-                  Sign in
-                </Link>
-              </>
-            )}
-          </div>
+            <p className="mt-6 max-w-lg text-lg leading-relaxed text-zinc-400">
+              {t("subtitle")}
+            </p>
 
-          {/* Scroll indicator */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce text-white/20">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              {user ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="group inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-[15px] font-bold text-zinc-900 shadow-lg shadow-black/30 transition hover:bg-zinc-100 active:scale-[0.98]"
+                  >
+                    My Dashboard
+                    <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <Link
+                    href="/create-club"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-7 py-3.5 text-[15px] font-medium text-white/80 transition hover:border-white/30 hover:text-white"
+                  >
+                    Create club
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/register"
+                    className="group inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-[15px] font-bold text-zinc-900 shadow-lg shadow-black/30 transition hover:bg-zinc-100 active:scale-[0.98]"
+                  >
+                    {t("cta")}
+                    <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center rounded-xl px-7 py-3.5 text-[15px] font-medium text-white/50 transition hover:text-white/80"
+                  >
+                    Sign in
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Social proof strip */}
+            <div className="mt-14 flex items-center gap-3 text-xs text-zinc-500">
+              <div className="flex -space-x-2">
+                {["#3b82f6","#8b5cf6","#ec4899","#f59e0b","#10b981"].map((c, i) => (
+                  <div key={i} className="h-6 w-6 rounded-full border-2 border-zinc-950" style={{ background: c }} />
+                ))}
+              </div>
+              <span>Trusted by clubs worldwide</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── FEATURES ────────────────────────────────────────────── */}
-      <section className="bg-[#fafaf9] py-28">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mb-16 max-w-xl">
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-green-600">功能特色</p>
-            <h2 className="text-4xl font-black tracking-tight text-gray-900 sm:text-5xl">
-              Everything your<br />club needs
-            </h2>
+      {/* ── FEATURES — asymmetric 2+1 grid ─────────────────────── */}
+      <section className="bg-[#f9fafb] py-28">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+          {/* Left-aligned header */}
+          <div className="mb-16 grid grid-cols-1 gap-8 md:grid-cols-2">
+            <div>
+              <p className="mb-3 text-xs font-bold uppercase tracking-widest text-green-700">
+                Features
+              </p>
+              <h2 className="text-4xl font-black tracking-tight text-zinc-900 sm:text-5xl">
+                Built for<br />football culture
+              </h2>
+            </div>
+            <div className="flex items-end">
+              <p className="text-base leading-relaxed text-zinc-500 max-w-sm">
+                Everything a club needs — from a public profile to a shared journal where the whole squad contributes.
+              </p>
+            </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-3">
-            {[
-              {
-                number: "01",
-                title: t("features.profile"),
-                desc: t("features.profileDesc"),
-                icon: (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-                  </svg>
-                ),
-                accent: "text-green-600 bg-green-50",
-              },
-              {
-                number: "02",
-                title: t("features.members"),
-                desc: t("features.membersDesc"),
-                icon: (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                  </svg>
-                ),
-                accent: "text-blue-600 bg-blue-50",
-              },
-              {
-                number: "03",
-                title: "手记动态",
-                desc: "记录每一场比赛、每一次训练、每一个球队瞬间。文字、照片、视频自由混合。",
-                icon: (
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
-                  </svg>
-                ),
-                accent: "text-purple-600 bg-purple-50",
-              },
-            ].map((f) => (
-              <div
-                key={f.number}
-                className="group rounded-2xl border border-gray-100 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-              >
-                <div className="mb-6 flex items-start justify-between">
-                  <div className={`rounded-xl p-2.5 ${f.accent}`}>{f.icon}</div>
-                  <span className="text-4xl font-black text-gray-100 group-hover:text-gray-200 transition">{f.number}</span>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-500">{f.desc}</p>
+          {/* Asymmetric feature grid: 2-col then 1 wide */}
+          <div className="grid gap-5 md:grid-cols-2">
+            {/* Feature 1 — tall */}
+            <div className="group rounded-2xl border border-slate-200/60 bg-white p-8 shadow-card transition hover:-translate-y-0.5 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)]">
+              <div className="mb-6 inline-flex items-center justify-center rounded-xl bg-green-50 p-3">
+                <Globe size={22} weight="duotone" className="text-green-700" />
               </div>
-            ))}
+              <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mb-2">01</p>
+              <h3 className="text-xl font-bold text-zinc-900">{t("features.profile")}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-500">{t("features.profileDesc")}</p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="group rounded-2xl border border-slate-200/60 bg-white p-8 shadow-card transition hover:-translate-y-0.5 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)]">
+              <div className="mb-6 inline-flex items-center justify-center rounded-xl bg-blue-50 p-3">
+                <Users size={22} weight="duotone" className="text-blue-600" />
+              </div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mb-2">02</p>
+              <h3 className="text-xl font-bold text-zinc-900">{t("features.members")}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-500">{t("features.membersDesc")}</p>
+            </div>
+
+            {/* Feature 3 — full width */}
+            <div className="group rounded-2xl border border-slate-200/60 bg-zinc-950 p-8 shadow-card transition hover:-translate-y-0.5 md:col-span-2">
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                <div>
+                  <div className="mb-6 inline-flex items-center justify-center rounded-xl bg-white/10 p-3">
+                    <Notebook size={22} weight="duotone" className="text-green-400" />
+                  </div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">03</p>
+                  <h3 className="text-xl font-bold text-white">手记动态</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                    每次比赛、训练、聚餐都值得被记录。多人协作，随时追加文字、照片、视频。
+                  </p>
+                </div>
+                {/* Visual preview */}
+                <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 p-6">
+                  <div className="w-full space-y-3">
+                    {["主场 3:0 胜利 — 精彩集锦", "训练日记 · 周三下午", "队友生日快乐"].map((label, i) => (
+                      <div key={i} className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-2.5">
+                        <div className="h-7 w-7 rounded-full bg-green-700/60 flex-shrink-0" />
+                        <span className="text-xs text-zinc-400 truncate">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────── */}
       <section className="bg-white py-28">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mb-16 text-center">
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-green-600">步骤</p>
-            <h2 className="text-4xl font-black tracking-tight text-gray-900 sm:text-5xl">
-              {t("howItWorks")}
-            </h2>
-          </div>
-          <div className="grid gap-px bg-gray-100 sm:grid-cols-3 rounded-2xl overflow-hidden shadow-sm">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-green-700">
+            How it works
+          </p>
+          <h2 className="mb-16 text-4xl font-black tracking-tight text-zinc-900 sm:text-5xl">
+            {t("howItWorks")}
+          </h2>
+
+          {/* Steps — not 3-col, use bordered-left list */}
+          <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
             {[
-              { n: "1", title: t("step1"), desc: t("step1Desc") },
-              { n: "2", title: t("step2"), desc: t("step2Desc") },
-              { n: "3", title: t("step3"), desc: t("step3Desc") },
+              { n: "01", title: t("step1"), desc: t("step1Desc") },
+              { n: "02", title: t("step2"), desc: t("step2Desc") },
+              { n: "03", title: t("step3"), desc: t("step3Desc") },
             ].map((s) => (
-              <div key={s.n} className="bg-white px-8 py-10">
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-[#0a2e1a] text-lg font-black text-white">
-                  {s.n}
+              <div key={s.n} className="grid grid-cols-[3rem_1fr] items-start gap-6 bg-white px-8 py-7 transition hover:bg-zinc-50/60 sm:grid-cols-[5rem_1fr]">
+                <span className="text-3xl font-black text-zinc-200">{s.n}</span>
+                <div>
+                  <h3 className="text-base font-bold text-zinc-900">{s.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">{s.desc}</p>
                 </div>
-                <h3 className="text-base font-bold text-gray-900">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-500">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -190,25 +203,24 @@ export default async function HomePage() {
       </section>
 
       {/* ── FINAL CTA ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-[#0a2e1a] py-28">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,rgba(34,197,94,0.15),transparent)]" />
-        <div className="relative mx-auto max-w-2xl px-4 text-center sm:px-6">
-          <h2 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
-            Ready to build<br />your club?
-          </h2>
-          <p className="mt-5 text-lg text-white/50">Free forever. No credit card required.</p>
-          <Link
-            href={user ? "/create-club" : "/register"}
-            className="mt-10 inline-flex items-center gap-2 rounded-xl bg-white px-9 py-4 text-base font-bold text-[#0a2e1a] shadow-xl shadow-black/20 transition hover:bg-green-50 active:scale-[0.98]"
-          >
-            {t("cta")}
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </Link>
+      <section className="relative overflow-hidden bg-zinc-950 py-28">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_30%_50%,rgba(21,128,61,0.2),transparent)]" />
+        <div className="relative mx-auto max-w-7xl px-5 sm:px-8">
+          <div className="max-w-xl">
+            <h2 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+              Your club,<br />online today.
+            </h2>
+            <p className="mt-5 text-lg text-zinc-500">Free forever. No credit card.</p>
+            <Link
+              href={user ? "/create-club" : "/register"}
+              className="group mt-10 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-[15px] font-bold text-zinc-900 shadow-xl shadow-black/20 transition hover:bg-zinc-100 active:scale-[0.98]"
+            >
+              {t("cta")}
+              <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
         </div>
       </section>
-
     </div>
   );
 }
