@@ -132,20 +132,35 @@ export async function appendPhotosBlock(postId: string, formData: FormData) {
   const clubId = (post as any).club_id;
   const blockId = (block as any).id;
 
+  let uploadedCount = 0;
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const ext = file.name.split(".").pop();
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
     const path = `posts/${clubId}/${postId}/${blockId}/${Date.now()}-${i}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage.from("media").upload(path, file);
-    if (uploadError) continue;
+    const { error: uploadError } = await supabase.storage
+      .from("media")
+      .upload(path, file, { contentType: file.type || "image/jpeg" });
+
+    if (uploadError) {
+      console.error(`[upload] file ${i} failed:`, uploadError.message);
+      continue;
+    }
 
     const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
-    await supabase.from("post_block_items").insert({
+    const { error: itemError } = await supabase.from("post_block_items").insert({
       block_id: blockId,
       url: publicUrl,
       sort_order: i,
     } as never);
+
+    if (!itemError) uploadedCount++;
+  }
+
+  if (uploadedCount === 0) {
+    // Roll back the empty block
+    await supabase.from("post_blocks").delete().eq("id", blockId);
+    return { error: "照片上传失败，请检查文件格式和大小（单张最大 20MB）" };
   }
 
   revalidatePath("/[locale]/club/[slug]", "page");

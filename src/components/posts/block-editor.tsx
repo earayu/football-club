@@ -315,8 +315,13 @@ export function BlockEditor({
     });
   }
 
-  function updateBlock(id: string, updates: Partial<Block>) {
-    setBlocks(p => p.map(b => b.id === id ? { ...b, ...updates } as Block : b));
+  function updateBlock(id: string, updater: (b: Block) => Block): void;
+  function updateBlock(id: string, updates: Partial<Block>): void;
+  function updateBlock(id: string, arg: Partial<Block> | ((b: Block) => Block)) {
+    setBlocks(p => p.map(b => {
+      if (b.id !== id) return b;
+      return typeof arg === "function" ? arg(b) : { ...b, ...arg } as Block;
+    }));
   }
 
   function removeBlock(id: string) {
@@ -352,19 +357,28 @@ export function BlockEditor({
     if (res.error || !res.post) { setError(res.error ?? "发布失败"); setSaving(false); return; }
 
     const postId = res.post.id;
+    const errors: string[] = [];
     for (const block of blocks) {
       if (block.type === "text" && block.content.trim()) {
-        await appendTextBlock(postId, block.content.trim());
+        const r = await appendTextBlock(postId, block.content.trim()) as any;
+        if (r?.error) errors.push(r.error);
       } else if (block.type === "photos" && block.files.length > 0) {
         const fd = new FormData();
         block.files.forEach(f => fd.append("photos", f));
-        await appendPhotosBlock(postId, fd);
+        const r = await appendPhotosBlock(postId, fd) as any;
+        if (r?.error) errors.push(r.error);
       } else if (block.type === "video" && block.url.trim()) {
-        await appendVideoBlock(postId, block.url.trim(), block.caption || undefined);
+        const r = await appendVideoBlock(postId, block.url.trim(), block.caption || undefined) as any;
+        if (r?.error) errors.push(r.error);
       }
     }
 
-    setSaving(false); handleClose(); router.refresh();
+    setSaving(false);
+    if (errors.length > 0) {
+      setError(errors.join(" · "));
+      return;
+    }
+    handleClose(); router.refresh();
   }
 
   // ── Collapsed state ──────────────────────────────────────────────────────────
@@ -448,11 +462,16 @@ export function BlockEditor({
               {block.type === "photos" && (
                 <NotionPhotoBlock
                   block={block}
-                  onAddFiles={(f, p) => updateBlock(block.id, { files: [...(block as PhotoBlock).files, ...f], previews: [...(block as PhotoBlock).previews, ...p] })}
-                  onRemoveFile={idx => updateBlock(block.id, {
-                    files: (block as PhotoBlock).files.filter((_, j) => j !== idx),
-                    previews: (block as PhotoBlock).previews.filter((_, j) => j !== idx),
-                  })}
+                  onAddFiles={(f, p) => updateBlock(block.id, (b) => ({
+                    ...b,
+                    files: [...(b as PhotoBlock).files, ...f],
+                    previews: [...(b as PhotoBlock).previews, ...p],
+                  }))}
+                  onRemoveFile={idx => updateBlock(block.id, (b) => ({
+                    ...b,
+                    files: (b as PhotoBlock).files.filter((_, j) => j !== idx),
+                    previews: (b as PhotoBlock).previews.filter((_, j) => j !== idx),
+                  }))}
                   onRemoveBlock={() => removeBlock(block.id)}
                 />
               )}
