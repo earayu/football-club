@@ -3,12 +3,13 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 
+import { useEffect, useState } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import type { PostEntryDocument } from "@/lib/posts/document";
 import { normalizeInitialDocument, postEditorSchema } from "@/components/posts/editor/post-editor-schema";
 
-export function RichContentView({
+function RichContentViewInner({
   document,
 }: {
   document: PostEntryDocument;
@@ -36,4 +37,22 @@ export function RichContentView({
       className="post-rich-view rounded-2xl"
     />
   );
+}
+
+export function RichContentView({
+  document,
+}: {
+  document: PostEntryDocument;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-[6rem] rounded-[1.25rem] bg-zinc-50/80" />;
+  }
+
+  return <RichContentViewInner document={document} />;
 }

@@ -3,7 +3,7 @@
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -57,7 +57,45 @@ function Avatar({
   );
 }
 
-export function PostComposer({
+function ComposerLoadingShell({
+  mode,
+  userAvatarUrl,
+  userInitial,
+  initialOpen,
+}: Pick<PostComposerProps, "mode" | "userAvatarUrl" | "userInitial" | "initialOpen">) {
+  if (mode === "create" && !initialOpen) {
+    return (
+      <div className="group flex w-full items-center gap-4 rounded-[1.75rem] border border-[rgba(0,0,0,0.06)] bg-white/92 px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_18px_50px_-32px_rgba(0,0,0,0.14)]">
+        <Avatar url={userAvatarUrl} initial={userInitial ?? "?"} />
+        <span className="flex-1 text-left text-[15px] font-medium text-zinc-400">
+          今天发生了什么？
+        </span>
+        <div className="flex items-center gap-2 text-zinc-300">
+          <ImageIcon size={15} weight="duotone" />
+          <YoutubeLogo size={15} weight="duotone" />
+          <LinkIcon size={15} weight="duotone" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="editor-surface overflow-hidden rounded-[2rem]">
+      <div className="flex items-center gap-3 border-b border-[rgba(0,0,0,0.05)] px-6 py-4 sm:px-7">
+        <Avatar url={userAvatarUrl} initial={userInitial ?? "?"} size="sm" />
+        <div className="space-y-2">
+          <div className="h-3 w-24 rounded-full bg-zinc-100" />
+          <div className="h-2.5 w-44 rounded-full bg-zinc-50" />
+        </div>
+      </div>
+      <div className="px-6 py-6 sm:px-7">
+        <div className="h-[24rem] rounded-[1.65rem] bg-zinc-50/80" />
+      </div>
+    </div>
+  );
+}
+
+function PostComposerInner({
   mode,
   clubId,
   postId,
@@ -128,7 +166,8 @@ export function PostComposer({
     if (!match) return;
 
     const currentBlock = editorInstance.getTextCursorPosition().block;
-    const shouldReplaceCurrentBlock = currentBlock.type === "paragraph" &&
+    const shouldReplaceCurrentBlock =
+      currentBlock.type === "paragraph" &&
       !hasMeaningfulContent([currentBlock as unknown as PostEntryDocument[number]]);
 
     const insertBlocks = (blocks: Parameters<typeof editorInstance.insertBlocks>[0]) => {
@@ -140,22 +179,12 @@ export function PostComposer({
     };
 
     if (match.kind === "image") {
-      insertBlocks([
-        {
-          type: "image",
-          props: { url: match.url },
-        },
-      ]);
+      insertBlocks([{ type: "image", props: { url: match.url } }]);
       return;
     }
 
     if (match.kind === "video") {
-      insertBlocks([
-        {
-          type: "video",
-          props: { url: match.url },
-        },
-      ]);
+      insertBlocks([{ type: "video", props: { url: match.url } }]);
       return;
     }
 
@@ -176,9 +205,7 @@ export function PostComposer({
 
       if ("error" in result && result.error) {
         editorInstance.updateBlock(targetBlock, {
-          props: {
-            status: "error",
-          },
+          props: { status: "error" },
         });
         return;
       }
@@ -197,9 +224,7 @@ export function PostComposer({
       }
     } catch {
       editorInstance.updateBlock(targetBlock, {
-        props: {
-          status: "error",
-        },
+        props: { status: "error" },
       });
     } finally {
       setResolvingCount((count) => Math.max(0, count - 1));
@@ -221,14 +246,15 @@ export function PostComposer({
 
     const content = editor.document as PostEntryDocument;
 
-    const result = mode === "create"
-      ? await createRichPost(clubId, {
-          title,
-          location,
-          eventDate: new Date(eventDate).toISOString(),
-          content,
-        })
-      : await appendPostEntry(postId!, content);
+    const result =
+      mode === "create"
+        ? await createRichPost(clubId, {
+            title,
+            location,
+            eventDate: new Date(eventDate).toISOString(),
+            content,
+          })
+        : await appendPostEntry(postId!, content);
 
     setSaving(false);
 
@@ -354,7 +380,7 @@ export function PostComposer({
       </div>
 
       <div className="flex items-center gap-3 border-t border-[rgba(0,0,0,0.05)] px-6 py-4 sm:px-7">
-        {(uploadingCount > 0 || resolvingCount > 0) ? (
+        {uploadingCount > 0 || resolvingCount > 0 ? (
           <span className="text-[11px] text-zinc-400">
             {uploadingCount > 0 ? `上传中 ${uploadingCount}` : `解析链接中 ${resolvingCount}`}
           </span>
@@ -379,4 +405,25 @@ export function PostComposer({
       </div>
     </div>
   );
+}
+
+export function PostComposer(props: PostComposerProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <ComposerLoadingShell
+        mode={props.mode}
+        userAvatarUrl={props.userAvatarUrl}
+        userInitial={props.userInitial}
+        initialOpen={props.initialOpen}
+      />
+    );
+  }
+
+  return <PostComposerInner {...props} />;
 }

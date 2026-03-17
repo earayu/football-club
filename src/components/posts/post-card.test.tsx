@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("@/components/posts/rich-content-view-lazy", () => ({
+vi.mock("@/components/posts/rich-content-view", () => ({
   RichContentView: () => <div data-testid="rich-content-view" />,
 }));
 

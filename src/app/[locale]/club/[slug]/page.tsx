@@ -12,12 +12,38 @@ import {
   VideoCamera,
 } from "@phosphor-icons/react/dist/ssr";
 import { PostCard, type PostData } from "@/components/posts/post-card";
-import { PostComposer } from "@/components/posts/post-composer-lazy";
-import { POST_FEED_SELECT } from "@/lib/posts/feed-query";
+import { PostComposer } from "@/components/posts/post-composer";
 
 type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
 type ProfileSummary = Pick<Database["public"]["Tables"]["profiles"]["Row"], "display_name" | "avatar_url">;
 type MembershipSummary = Pick<Database["public"]["Tables"]["memberships"]["Row"], "role" | "status">;
+
+const POST_FEED_SELECT = `
+  id,
+  title,
+  location,
+  event_date,
+  is_pinned,
+  created_by,
+  created_at,
+  updated_at,
+  profiles:profiles!posts_created_by_fkey(
+    display_name,
+    avatar_url
+  ),
+  post_entries(
+    id,
+    post_id,
+    author_id,
+    sort_order,
+    created_at,
+    content,
+    profiles:profiles!post_entries_author_id_fkey(
+      display_name,
+      avatar_url
+    )
+  )
+`;
 
 export async function generateMetadata({
   params,

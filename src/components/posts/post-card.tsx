@@ -11,8 +11,8 @@ import {
 } from "@phosphor-icons/react";
 import { deletePost, deletePostEntry, togglePinPost } from "@/lib/actions/rich-posts";
 import { summarizeEntryContent, type PostEntryDocument } from "@/lib/posts/document";
-import { PostComposer } from "@/components/posts/post-composer-lazy";
-import { RichContentView } from "@/components/posts/rich-content-view-lazy";
+import { PostComposer } from "@/components/posts/post-composer";
+import { RichContentView } from "@/components/posts/rich-content-view";
 
 export type PostEntryData = {
   id: string;
@@ -68,31 +68,46 @@ function Avatar({
 function PostEntrySection({
   entry,
   isFirst,
+  isLast,
   currentUserId,
   isAdmin,
 }: {
   entry: PostEntryData;
   isFirst: boolean;
+  isLast: boolean;
   currentUserId: string | null;
   isAdmin: boolean;
 }) {
   const router = useRouter();
   const canDeleteEntry = !isFirst && (isAdmin || entry.author_id === currentUserId);
+  const timeLabel = new Date(entry.created_at).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
-    <section>
-      {!isFirst && (
-        <div className="flex items-center gap-2 px-6 py-3 border-t border-[rgba(0,0,0,0.04)] sm:px-7">
+    <section className={`relative grid grid-cols-[2.75rem_minmax(0,1fr)] gap-4 ${isFirst ? "px-6 pb-6 sm:px-7" : "px-6 py-5 sm:px-7"}`}>
+      <div className="relative flex justify-center">
+        {!isLast ? (
+          <div className={`absolute left-1/2 top-10 -translate-x-1/2 rounded-full bg-[linear-gradient(180deg,rgba(161,161,170,0.22),rgba(16,185,129,0.12),rgba(161,161,170,0.08))] ${isFirst ? "bottom-[-2.25rem]" : "bottom-[-1.5rem]"} w-px`} />
+        ) : null}
+        <div className={`relative z-10 mt-1 rounded-full ${isFirst ? "bg-emerald-50 p-1.5 ring-1 ring-emerald-200/70" : "bg-white p-1 ring-1 ring-zinc-200/80"}`}>
           <Avatar
             url={entry.profiles.avatar_url}
             name={entry.profiles.display_name}
-            size="sm"
+            size={isFirst ? "md" : "sm"}
           />
-          <span className="text-[11px] text-zinc-400">
-            <span className="font-semibold text-zinc-600">{entry.profiles.display_name}</span>
-            {" "}
-            {summarizeEntryContent(entry.content)}
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${isFirst ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70" : "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200/80"}`}>
+            {isFirst ? "主帖" : summarizeEntryContent(entry.content)}
           </span>
+          <span className="text-[11px] text-zinc-400">{entry.profiles.display_name}</span>
+          <span className="text-[11px] text-zinc-300">·</span>
+          <span className="text-[11px] text-zinc-400">{timeLabel}</span>
           {canDeleteEntry ? (
             <button
               type="button"
@@ -107,9 +122,10 @@ function PostEntrySection({
             </button>
           ) : null}
         </div>
-      )}
-      <div className={isFirst ? "px-6 pb-6 sm:px-7" : "px-6 py-4 sm:px-7"}>
-        <RichContentView document={entry.content} />
+
+        <div className={`overflow-hidden rounded-[1.65rem] ${isFirst ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,249,0.95))] shadow-[0_30px_70px_-42px_rgba(15,23,42,0.16)] ring-1 ring-emerald-100/80" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,249,250,0.92))] shadow-[0_24px_56px_-42px_rgba(15,23,42,0.14)] ring-1 ring-zinc-100"} p-4 sm:p-5`}>
+          <RichContentView document={entry.content} />
+        </div>
       </div>
     </section>
   );
@@ -248,15 +264,20 @@ export function PostCard({
       ) : null}
 
       <div>
-        {entries.map((entry, index) => (
-          <PostEntrySection
-            key={entry.id}
-            entry={entry}
-            isFirst={index === 0}
-            currentUserId={currentUserId}
-            isAdmin={isAdmin}
-          />
-        ))}
+        {entries.map((entry, index) => {
+          const isFirst = index === 0;
+          const isLast = index === entries.length - 1;
+          return (
+            <PostEntrySection
+              key={entry.id}
+              entry={entry}
+              isFirst={isFirst}
+              isLast={isLast}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+            />
+          );
+        })}
       </div>
 
       {currentUserId && !appendOpen ? (
