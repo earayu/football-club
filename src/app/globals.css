@@ -1,8 +1,12 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+  --background: #fafaf9;
+  --foreground: #0c1810;
+  --green-deep: #0a4f2e;
+  --green-mid: #15803d;
+  --green-bright: #22c55e;
 }
 
 @theme inline {
@@ -10,11 +14,7 @@
   --color-foreground: var(--foreground);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html {
   scroll-behavior: smooth;
@@ -24,48 +24,34 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Warmer selection */
 ::selection {
   background-color: #bbf7d0;
   color: #14532d;
 }
 
+/* Focus ring */
 :focus-visible {
   outline: 2px solid #16a34a;
   outline-offset: 2px;
 }
 
 /* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-/* Image rendering */
-img {
-  max-width: 100%;
-  height: auto;
-}
+/* Transitions */
+a, button { transition-property: color, background-color, border-color, box-shadow, opacity, transform; transition-duration: 150ms; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
 
-/* Smooth transitions for interactive elements */
-a,
-button {
-  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
-  transition-duration: 150ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
+img { max-width: 100%; height: auto; }
+
+/* Textarea auto-grow support */
+textarea { field-sizing: content; }

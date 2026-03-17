@@ -4,7 +4,7 @@ import { generateClubJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PostCard, type PostData } from "@/components/posts/post-card";
-import { NewPostForm } from "@/components/posts/new-post-form";
+import { BlockEditor } from "@/components/posts/block-editor";
 
 type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
 
@@ -96,7 +96,7 @@ export default async function ClubPostsPage({
         {/* Compose box */}
         {isMember && (
           <div className="mb-6">
-            <NewPostForm
+            <BlockEditor
               clubId={clubId}
               userAvatarUrl={profile?.avatar_url}
               userInitial={
