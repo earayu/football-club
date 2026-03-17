@@ -8,13 +8,11 @@ import {
   deletePost, togglePinPost, deleteBlock,
   appendTextBlock, appendVideoBlock, appendPhotosBlockFromUrls,
 } from "@/lib/actions/posts";
-import {
-  validatePhotoFiles, uploadPhotosToStorage,
-} from "@/lib/upload";
+import { validatePhotoFiles, uploadPhotosToStorage } from "@/lib/upload";
 import {
   MapPin, PushPin, Trash, Plus, X,
   YoutubeLogo, Image as ImageIcon, CheckCircle, DotsThree,
-  ArrowUp, SpinnerGap,
+  ArrowUp, SpinnerGap, Link as LinkIcon,
 } from "@phosphor-icons/react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,6 +36,14 @@ export type PostData = {
   post_blocks: Block[];
 };
 
+// Photo entry: either a local file or an already-hosted URL (e.g. dragged from browser)
+type PhotoEntry =
+  | { kind: "file"; file: File; preview: string }
+  | { kind: "url";  url: string };
+
+// A link card for non-image, non-video URLs
+type LinkCard = { url: string; domain: string };
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function Avatar({ url, name, size = "md" }: { url: string | null; name: string; size?: "sm" | "md" }) {
@@ -58,11 +64,86 @@ function getVideoEmbed(url: string): string | null {
   return null;
 }
 
-// ─── Notion-style Append Editor ───────────────────────────────────────────────
-// Single unified panel — text, photos, and video all in one step.
-// No "pick a type" screen. Just interact directly.
+const IMAGE_URL_RE = /^https?:\/\/.+\.(jpe?g|png|gif|webp|heic|avif|bmp)(\?.*)?$/i;
 
-type PhotoEntry = { file: File; preview: string };
+// ─── Photo Grid ───────────────────────────────────────────────────────────────
+
+function PhotoGrid({
+  photos,
+  onRemove,
+  onAddMore,
+}: {
+  photos: PhotoEntry[];
+  onRemove: (i: number) => void;
+  onAddMore: () => void;
+}) {
+  const cols = photos.length === 1 ? "grid-cols-1" : photos.length === 2 ? "grid-cols-2" : "grid-cols-3";
+  return (
+    <div className="space-y-1.5">
+      <div className={`grid gap-0.5 overflow-hidden rounded-xl ${cols}`}>
+        {photos.map((p, i) => (
+          <div key={i} className="group/p relative aspect-square overflow-hidden bg-zinc-100">
+            <img
+              src={p.kind === "file" ? p.preview : p.url}
+              alt=""
+              className="h-full w-full object-cover transition-transform duration-500 group-hover/p:scale-[1.04]"
+            />
+            <button
+              type="button"
+              onClick={() => onRemove(i)}
+              className="absolute right-1.5 top-1.5 hidden h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm group-hover/p:flex hover:bg-red-500 transition-colors duration-150"
+            >
+              <X size={10} weight="bold" />
+            </button>
+          </div>
+        ))}
+      </div>
+      {/* "Add more" button is always BELOW the grid, never inside it */}
+      <button
+        type="button"
+        onClick={onAddMore}
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-200 py-2 text-[11px] text-zinc-400 transition-all duration-200 hover:border-green-300 hover:bg-green-50/30 hover:text-green-600"
+      >
+        <Plus size={12} weight="bold" />
+        继续添加照片
+      </button>
+    </div>
+  );
+}
+
+// ─── Link Card ────────────────────────────────────────────────────────────────
+
+function LinkCardItem({ card, onRemove }: { card: LinkCard; onRemove: () => void }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-zinc-200/80 bg-zinc-50/60 px-3.5 py-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm border border-zinc-100">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${card.domain}&sz=64`}
+          alt=""
+          className="h-5 w-5"
+          onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[12px] font-medium text-zinc-700">{card.domain}</p>
+        <a
+          href={card.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="truncate block text-[11px] text-zinc-400 hover:text-green-600 transition-colors"
+        >
+          {card.url}
+        </a>
+      </div>
+      <button type="button" onClick={onRemove} className="shrink-0 text-zinc-300 hover:text-red-400 transition-colors">
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
+
+// ─── Notion-style Append Editor ───────────────────────────────────────────────
 
 function AppendEditor({
   postId, clubId, onClose,
@@ -72,43 +153,133 @@ function AppendEditor({
   const router = useRouter();
   const textRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragCountRef = useRef(0);
 
   const [text, setText] = useState("");
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [linkCards, setLinkCards] = useState<LinkCard[]>([]);
   const [sizeWarnings, setSizeWarnings] = useState<string[]>([]);
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoCaption, setVideoCaption] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-focus text area on mount
   useEffect(() => { textRef.current?.focus(); }, []);
 
   const videoEmbedUrl = videoUrl ? getVideoEmbed(videoUrl) : null;
   const isValidVideo = !!videoEmbedUrl;
-  const hasContent = text.trim() || photos.length > 0 || (videoOpen && videoUrl.trim());
+  const hasContent = text.trim() || photos.length > 0 || linkCards.length > 0 || (videoOpen && videoUrl.trim());
 
-  function addPhotos(fl: FileList | null) {
+  // ── Photo helpers ──────────────────────────────────────────────────────────
+
+  function addPhotoFiles(fl: File[] | FileList | null) {
     if (!fl) return;
-    const files = Array.from(fl);
-    const { valid, sizeErrors } = validatePhotoFiles(files);
-    setSizeWarnings(sizeErrors);
+    const arr = Array.from(fl);
+    const { valid, sizeErrors } = validatePhotoFiles(arr);
+    if (sizeErrors.length) setSizeWarnings(w => [...w, ...sizeErrors]);
     if (valid.length) {
-      setPhotos(p => [
-        ...p,
-        ...valid.map(f => ({ file: f, preview: URL.createObjectURL(f) })),
-      ]);
+      setPhotos(p => [...p, ...valid.map(f => ({ kind: "file" as const, file: f, preview: URL.createObjectURL(f) }))]);
     }
   }
 
-  function removePhoto(i: number) {
-    setPhotos(p => {
-      const next = p.filter((_, j) => j !== i);
-      return next;
-    });
+  function addPhotoUrl(url: string) {
+    setPhotos(p => [...p, { kind: "url" as const, url }]);
   }
+
+  // ── URL detection ──────────────────────────────────────────────────────────
+
+  function handleDetectedUrl(raw: string) {
+    const url = raw.trim();
+    if (!url.startsWith("http")) return false;
+
+    // Video
+    if (getVideoEmbed(url)) {
+      setVideoUrl(url);
+      setVideoOpen(true);
+      return true;
+    }
+    // Image URL
+    if (IMAGE_URL_RE.test(url)) {
+      addPhotoUrl(url);
+      return true;
+    }
+    // Generic link card
+    try {
+      const domain = new URL(url).hostname;
+      setLinkCards(c => [...c, { url, domain }]);
+      return true;
+    } catch { return false; }
+  }
+
+  // ── Smart paste in textarea ────────────────────────────────────────────────
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    // Handle pasted image files (e.g. screenshot from clipboard)
+    const imageFiles = Array.from(e.clipboardData.files).filter(f => f.type.startsWith("image/"));
+    if (imageFiles.length) {
+      e.preventDefault();
+      addPhotoFiles(imageFiles);
+      return;
+    }
+
+    const pasted = e.clipboardData.getData("text/plain").trim();
+    if (!pasted) return;
+
+    // Only intercept if textarea is currently empty (pure URL paste)
+    if (text.trim() === "" && handleDetectedUrl(pasted)) {
+      e.preventDefault();
+    }
+    // Otherwise let the text paste normally
+  }
+
+  // ── Drag & Drop ────────────────────────────────────────────────────────────
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    dragCountRef.current++;
+    setIsDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    dragCountRef.current--;
+    if (dragCountRef.current <= 0) {
+      dragCountRef.current = 0;
+      setIsDragOver(false);
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragCountRef.current = 0;
+    setIsDragOver(false);
+
+    // 1. Dropped image files (from file manager)
+    const imageFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
+    if (imageFiles.length) { addPhotoFiles(imageFiles); return; }
+
+    // 2. Dropped URL/text (from browser tab, address bar, etc.)
+    const dropped =
+      e.dataTransfer.getData("text/uri-list")?.split("\n")[0]?.trim() ||
+      e.dataTransfer.getData("text/plain")?.trim() ||
+      "";
+
+    if (dropped && !handleDetectedUrl(dropped)) {
+      // Not recognized as a special URL — append to text
+      setText(t => (t ? t + "\n" + dropped : dropped));
+    }
+  }
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
 
   async function handleSubmit() {
     if (!hasContent || uploading) return;
@@ -118,39 +289,47 @@ function AppendEditor({
     try {
       const errs: string[] = [];
 
-      // 1. Text
-      if (text.trim()) {
-        const r = await appendTextBlock(postId, text.trim()) as any;
+      // Text
+      const fullText = [
+        text.trim(),
+        ...linkCards.map(c => c.url),
+      ].filter(Boolean).join("\n");
+      if (fullText) {
+        const r = await appendTextBlock(postId, fullText) as any;
         if (r?.error) errs.push(r.error);
       }
 
-      // 2. Photos — upload directly from browser, then save URLs
+      // Photos (files + URL-based)
       if (photos.length > 0) {
-        setUploadProgress({ done: 0, total: photos.length });
-        const { urls, uploadErrors } = await uploadPhotosToStorage(
-          photos.map(p => p.file),
-          `posts/${clubId}/${postId}`,
-          (done, total) => setUploadProgress({ done, total }),
-        );
-        if (uploadErrors.length) errs.push(...uploadErrors);
-        if (urls.length > 0) {
-          const r = await appendPhotosBlockFromUrls(postId, urls) as any;
+        const filePhotos = photos.filter(p => p.kind === "file") as Extract<PhotoEntry, {kind:"file"}>[];
+        const urlPhotos  = photos.filter(p => p.kind === "url")  as Extract<PhotoEntry, {kind:"url"}>[];
+
+        let uploadedUrls: string[] = [];
+        if (filePhotos.length > 0) {
+          setUploadProgress({ done: 0, total: filePhotos.length });
+          const { urls, uploadErrors } = await uploadPhotosToStorage(
+            filePhotos.map(p => p.file),
+            `posts/${clubId}/${postId}`,
+            (done, total) => setUploadProgress({ done, total }),
+          );
+          if (uploadErrors.length) errs.push(...uploadErrors);
+          uploadedUrls = urls;
+        }
+
+        const allPhotoUrls = [...uploadedUrls, ...urlPhotos.map(p => p.url)];
+        if (allPhotoUrls.length > 0) {
+          const r = await appendPhotosBlockFromUrls(postId, allPhotoUrls) as any;
           if (r?.error) errs.push(r.error);
         }
       }
 
-      // 3. Video
+      // Video
       if (videoOpen && videoUrl.trim()) {
         const r = await appendVideoBlock(postId, videoUrl.trim(), videoCaption || undefined) as any;
         if (r?.error) errs.push(r.error);
       }
 
-      if (errs.length) {
-        setError(errs.join(" · "));
-        setUploading(false);
-        return;
-      }
-
+      if (errs.length) { setError(errs.join(" · ")); setUploading(false); return; }
       router.refresh();
       onClose();
     } catch (e: any) {
@@ -159,88 +338,80 @@ function AppendEditor({
     }
   }
 
-  return (
-    <div className="border-t border-[rgba(0,0,0,0.05)] px-5 py-4 space-y-3 animate-fade-up">
+  // ── Render ─────────────────────────────────────────────────────────────────
 
-      {/* ── Error ── */}
+  return (
+    <div
+      ref={containerRef}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className={`relative border-t border-[rgba(0,0,0,0.05)] px-5 py-4 space-y-3 animate-fade-up transition-colors duration-200 ${isDragOver ? "bg-green-50/50" : ""}`}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-b-[1.25rem] border-2 border-dashed border-green-400 bg-green-50/80 backdrop-blur-[2px]">
+          <ImageIcon size={28} weight="duotone" className="text-green-500" />
+          <span className="text-[13px] font-semibold text-green-700">松开鼠标添加</span>
+          <span className="text-[11px] text-green-600">支持图片文件、图片链接、视频链接</span>
+        </div>
+      )}
+
+      {/* Error */}
       {error && (
         <div className="animate-fade-in rounded-xl bg-red-50 px-4 py-2.5 text-[12px] leading-relaxed text-red-600">
           {error}
         </div>
       )}
 
-      {/* ── Size warnings (soft, non-blocking) ── */}
+      {/* Size warnings */}
       {sizeWarnings.length > 0 && (
         <div className="animate-fade-in rounded-xl bg-amber-50 px-4 py-2.5 text-[12px] leading-relaxed text-amber-700">
           {sizeWarnings.map((w, i) => <div key={i}>{w}</div>)}
+          <button type="button" onClick={() => setSizeWarnings([])} className="mt-1 text-amber-500 underline text-[11px]">关闭</button>
         </div>
       )}
 
-      {/* ── Text area — always visible, autofocused ── */}
+      {/* Text area */}
       <textarea
         ref={textRef}
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder="补充内容……按 Enter 换行"
+        onPaste={handlePaste}
+        placeholder="补充内容…按 Enter 换行，直接粘贴链接自动识别"
         rows={2}
         className="notion-block w-full text-[14px]"
         style={{ lineHeight: "1.8" }}
-        onInput={e => {
-          const el = e.currentTarget;
-          el.style.height = "auto";
-          el.style.height = `${el.scrollHeight}px`;
-        }}
-        onKeyDown={e => {
-          if (e.key === "Escape") onClose();
-        }}
+        onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; }}
+        onKeyDown={e => { if (e.key === "Escape") onClose(); }}
       />
 
-      {/* ── Photo thumbnails — inline, no separate "upload" screen ── */}
+      {/* Photo grid */}
       {photos.length > 0 && (
-        <div className="overflow-hidden rounded-xl">
-          <div className={`grid gap-0.5 ${
-            photos.length === 1 ? "grid-cols-1"
-            : photos.length === 2 ? "grid-cols-2"
-            : "grid-cols-3"
-          }`}>
-            {photos.map((p, i) => (
-              <div key={i} className="group/p relative aspect-square overflow-hidden bg-zinc-100">
-                <img
-                  src={p.preview}
-                  alt=""
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover/p:scale-[1.04]"
-                />
-                <button
-                  type="button"
-                  onClick={() => removePhoto(i)}
-                  className="absolute right-1.5 top-1.5 hidden h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm group-hover/p:flex hover:bg-red-500 transition-colors duration-150"
-                >
-                  <X size={10} weight="bold" />
-                </button>
-              </div>
-            ))}
-            {/* Quick-add more photos */}
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              className="flex aspect-square flex-col items-center justify-center gap-1 bg-zinc-50 hover:bg-zinc-100 transition-colors duration-150"
-            >
-              <Plus size={16} className="text-zinc-300" />
-              <span className="text-[10px] text-zinc-300">更多</span>
-            </button>
-          </div>
+        <PhotoGrid
+          photos={photos}
+          onRemove={i => setPhotos(p => p.filter((_, j) => j !== i))}
+          onAddMore={() => photoInputRef.current?.click()}
+        />
+      )}
+
+      {/* Link cards */}
+      {linkCards.length > 0 && (
+        <div className="space-y-1.5">
+          {linkCards.map((card, i) => (
+            <LinkCardItem key={i} card={card} onRemove={() => setLinkCards(c => c.filter((_, j) => j !== i))} />
+          ))}
         </div>
       )}
 
-      {/* ── Video URL input — toggled inline ── */}
+      {/* Video section */}
       {videoOpen && (
         <div className="animate-fade-up space-y-2">
-          <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all duration-300 ${
-            isValidVideo ? "border-green-200 bg-green-50/30" : "border-zinc-200 bg-zinc-50"
-          }`}>
+          <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all duration-300 ${isValidVideo ? "border-green-200 bg-green-50/30" : "border-zinc-200 bg-zinc-50"}`}>
             <YoutubeLogo size={14} weight="duotone" className={isValidVideo ? "text-green-600 shrink-0" : "text-zinc-300 shrink-0"} />
             <input
-              autoFocus
+              autoFocus={!photos.length}
               type="url"
               value={videoUrl}
               onChange={e => setVideoUrl(e.target.value)}
@@ -260,71 +431,63 @@ function AppendEditor({
             </div>
           )}
           {isValidVideo && (
-            <input
-              type="text"
-              value={videoCaption}
-              onChange={e => setVideoCaption(e.target.value)}
+            <input type="text" value={videoCaption} onChange={e => setVideoCaption(e.target.value)}
               placeholder="视频描述（可选）"
-              className="w-full bg-transparent text-[12px] text-zinc-500 placeholder:text-zinc-300 focus:outline-none"
-            />
+              className="w-full bg-transparent text-[12px] text-zinc-500 placeholder:text-zinc-300 focus:outline-none" />
           )}
         </div>
       )}
 
-      {/* ── Toolbar ── */}
+      {/* Toolbar */}
       <div className="flex items-center gap-1.5">
-        {/* Photo button — click directly triggers file picker */}
+        {/* Photo button */}
         <button
           type="button"
           onClick={() => photoInputRef.current?.click()}
-          title="添加照片"
-          className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${
-            photos.length > 0
-              ? "border-green-200 bg-green-50 text-green-600"
-              : "border-zinc-200 bg-white text-zinc-400 hover:border-green-200 hover:text-green-600"
-          }`}
+          title="添加照片 (支持拖入)"
+          className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${photos.length > 0 ? "border-green-200 bg-green-50 text-green-600" : "border-zinc-200 bg-white text-zinc-400 hover:border-green-200 hover:text-green-600"}`}
         >
           <ImageIcon size={13} weight="duotone" />
         </button>
+        {/* Hidden file input — reset value after each use so same file can be re-added */}
         <input
           ref={photoInputRef}
           type="file"
           accept="image/*"
           multiple
           className="hidden"
-          onChange={e => addPhotos(e.target.files)}
+          onChange={e => { addPhotoFiles(e.target.files); e.target.value = ""; }}
         />
 
         {/* Video button */}
         <button
           type="button"
-          onClick={() => { setVideoOpen(v => !v); }}
-          title="添加视频"
-          className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${
-            videoOpen
-              ? "border-green-200 bg-green-50 text-green-600"
-              : "border-zinc-200 bg-white text-zinc-400 hover:border-green-200 hover:text-green-600"
-          }`}
+          onClick={() => setVideoOpen(v => !v)}
+          title="添加视频 (支持粘贴链接)"
+          className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${videoOpen ? "border-green-200 bg-green-50 text-green-600" : "border-zinc-200 bg-white text-zinc-400 hover:border-green-200 hover:text-green-600"}`}
         >
           <YoutubeLogo size={13} weight="duotone" />
         </button>
 
+        {/* Link card indicator */}
+        {linkCards.length > 0 && (
+          <span className="flex items-center gap-1 text-[11px] text-zinc-400">
+            <LinkIcon size={11} /> {linkCards.length} 个链接
+          </span>
+        )}
+
         {/* Upload progress */}
         {uploading && uploadProgress.total > 0 && (
-          <span className="ml-1 text-[11px] text-zinc-400">
+          <span className="ml-1 text-[11px] text-zinc-400 tabular-nums">
             上传 {uploadProgress.done}/{uploadProgress.total}
           </span>
         )}
 
         {/* Cancel + Submit */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="ml-auto text-[12px] text-zinc-400 hover:text-zinc-600 transition-colors duration-150"
-        >
+        <button type="button" onClick={onClose}
+          className="ml-auto text-[12px] text-zinc-400 hover:text-zinc-600 transition-colors duration-150">
           取消
         </button>
-
         <button
           type="button"
           onClick={handleSubmit}
@@ -362,14 +525,8 @@ function BlockContent({ block, isFirst, currentUserId, isAdmin }: {
             {" "}补充了 {block.type === "text" ? "文字" : block.type === "photos" ? `${photos.length} 张照片` : "视频"}
           </span>
           {canDelete && (
-            <button
-              onClick={async () => {
-                if (!confirm("删除该内容块？")) return;
-                await deleteBlock(block.id);
-                router.refresh();
-              }}
-              className="ml-auto text-[11px] text-zinc-300 transition-colors hover:text-red-400"
-            >
+            <button onClick={async () => { if (!confirm("删除该内容块？")) return; await deleteBlock(block.id); router.refresh(); }}
+              className="ml-auto text-[11px] text-zinc-300 transition-colors hover:text-red-400">
               删除
             </button>
           )}
@@ -432,7 +589,6 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, clubSlug: _club
         <div className="overflow-hidden"><PostPhotoGrid photos={heroPhotos} /></div>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-1.5">
         <div className="flex items-center gap-2.5">
           <Avatar url={post.profiles.avatar_url} name={post.profiles.display_name} />
@@ -457,28 +613,22 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, clubSlug: _club
 
         {hasMenu && (
           <div ref={menuRef} className="relative">
-            <button
-              onClick={() => setMenuOpen(v => !v)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-300 transition-all duration-150 hover:bg-zinc-100 hover:text-zinc-500"
-            >
+            <button onClick={() => setMenuOpen(v => !v)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-300 transition-all duration-150 hover:bg-zinc-100 hover:text-zinc-500">
               <DotsThree size={18} weight="bold" />
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-full z-20 mt-1.5 animate-scale-in min-w-[140px] overflow-hidden rounded-xl border border-[rgba(0,0,0,0.07)] bg-white py-1 shadow-[0_8px_32px_-4px_rgba(0,0,0,0.14)]">
                 {isAdmin && (
-                  <button
-                    onClick={async () => { setMenuOpen(false); await togglePinPost(post.id, !post.is_pinned); router.refresh(); }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2 text-[13px] text-zinc-700 transition-colors hover:bg-zinc-50"
-                  >
+                  <button onClick={async () => { setMenuOpen(false); await togglePinPost(post.id, !post.is_pinned); router.refresh(); }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2 text-[13px] text-zinc-700 transition-colors hover:bg-zinc-50">
                     <PushPin size={13} weight={post.is_pinned ? "fill" : "regular"} className={post.is_pinned ? "text-amber-400" : "text-zinc-400"} />
                     {post.is_pinned ? "取消置顶" : "置顶手记"}
                   </button>
                 )}
                 {canDelete && (
-                  <button
-                    onClick={async () => { setMenuOpen(false); if (!confirm("确认删除该手记？")) return; await deletePost(post.id); router.refresh(); }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2 text-[13px] text-red-500 transition-colors hover:bg-red-50"
-                  >
+                  <button onClick={async () => { setMenuOpen(false); if (!confirm("确认删除该手记？")) return; await deletePost(post.id); router.refresh(); }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2 text-[13px] text-red-500 transition-colors hover:bg-red-50">
                     <Trash size={13} /> 删除手记
                   </button>
                 )}
@@ -495,32 +645,21 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, clubSlug: _club
       <div className="pb-2">
         {blocks.map((block, i) => {
           if (i === 0 && hasHeroPhoto) return null;
-          return (
-            <BlockContent key={block.id} block={block} isFirst={i === 0}
-              currentUserId={currentUserId} isAdmin={isAdmin} />
-          );
+          return <BlockContent key={block.id} block={block} isFirst={i === 0} currentUserId={currentUserId} isAdmin={isAdmin} />;
         })}
       </div>
 
-      {/* Append trigger / editor */}
       {currentUserId && !appendOpen && (
         <div className="border-t border-[rgba(0,0,0,0.04)] px-5 py-2.5">
-          <button
-            type="button"
-            onClick={() => setAppendOpen(true)}
-            className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 transition-all duration-200 hover:text-green-700"
-          >
+          <button type="button" onClick={() => setAppendOpen(true)}
+            className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 transition-all duration-200 hover:text-green-700">
             <Plus size={13} weight="bold" /> 补充内容
           </button>
         </div>
       )}
 
       {currentUserId && appendOpen && (
-        <AppendEditor
-          postId={post.id}
-          clubId={clubId}
-          onClose={() => setAppendOpen(false)}
-        />
+        <AppendEditor postId={post.id} clubId={clubId} onClose={() => setAppendOpen(false)} />
       )}
     </article>
   );
