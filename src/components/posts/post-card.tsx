@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PostPhotoGrid, type GridPhoto } from "./post-photo-grid";
 import { VideoEmbed } from "./video-embed";
 import {
   deletePost, togglePinPost, deleteBlock,
-  appendTextBlock, appendPhotosBlock, appendVideoBlock,
+  appendTextBlock, appendVideoBlock, appendPhotosBlockFromUrls,
 } from "@/lib/actions/posts";
+import {
+  validatePhotoFiles, uploadPhotosToStorage,
+} from "@/lib/upload";
 import {
   MapPin, PushPin, Trash, Plus, X,
   YoutubeLogo, Image as ImageIcon, CheckCircle, DotsThree,
+  ArrowUp, SpinnerGap,
 } from "@phosphor-icons/react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -54,154 +58,199 @@ function getVideoEmbed(url: string): string | null {
   return null;
 }
 
-// ─── Append Block Editor (inline on existing posts) ───────────────────────────
+// ─── Notion-style Append Editor ───────────────────────────────────────────────
+// Single unified panel — text, photos, and video all in one step.
+// No "pick a type" screen. Just interact directly.
 
-function AppendEditor({ postId, onClose }: { postId: string; onClose: () => void }) {
+type PhotoEntry = { file: File; preview: string };
+
+function AppendEditor({
+  postId, clubId, onClose,
+}: {
+  postId: string; clubId: string; onClose: () => void;
+}) {
   const router = useRouter();
-  const [mode, setMode] = useState<"pick" | "text" | "photos" | "video">("pick");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // text
-  const [text, setText] = useState("");
-  // photos
-  const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
-  const [dragging, setDragging] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  // video
+
+  const [text, setText] = useState("");
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [sizeWarnings, setSizeWarnings] = useState<string[]>([]);
+  const [videoOpen, setVideoOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoCaption, setVideoCaption] = useState("");
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (mode === "text" && textAreaRef.current) textAreaRef.current.focus();
-  }, [mode]);
-
-  function handlePhotoFiles(fl: FileList | null) {
-    if (!fl) return;
-    const arr = Array.from(fl).filter(f => f.type.startsWith("image/"));
-    setFiles(p => [...p, ...arr]);
-    setPreviews(p => [...p, ...arr.map(f => URL.createObjectURL(f))]);
-  }
-
-  async function handleSubmit() {
-    setSaving(true); setError(null);
-    try {
-      if (mode === "text" && text.trim()) {
-        const r = await appendTextBlock(postId, text.trim()) as any;
-        if (r?.error) { setError(r.error); setSaving(false); return; }
-      } else if (mode === "photos" && files.length > 0) {
-        const fd = new FormData(); files.forEach(f => fd.append("photos", f));
-        const r = await appendPhotosBlock(postId, fd) as any;
-        if (r?.error) { setError(r.error); setSaving(false); return; }
-      } else if (mode === "video" && videoUrl.trim()) {
-        const r = await appendVideoBlock(postId, videoUrl.trim(), videoCaption || undefined) as any;
-        if (r?.error) { setError(r.error); setSaving(false); return; }
-      }
-      router.refresh(); onClose();
-    } catch { setError("提交失败，请重试"); setSaving(false); }
-  }
+  // Auto-focus text area on mount
+  useEffect(() => { textRef.current?.focus(); }, []);
 
   const videoEmbedUrl = videoUrl ? getVideoEmbed(videoUrl) : null;
   const isValidVideo = !!videoEmbedUrl;
+  const hasContent = text.trim() || photos.length > 0 || (videoOpen && videoUrl.trim());
+
+  function addPhotos(fl: FileList | null) {
+    if (!fl) return;
+    const files = Array.from(fl);
+    const { valid, sizeErrors } = validatePhotoFiles(files);
+    setSizeWarnings(sizeErrors);
+    if (valid.length) {
+      setPhotos(p => [
+        ...p,
+        ...valid.map(f => ({ file: f, preview: URL.createObjectURL(f) })),
+      ]);
+    }
+  }
+
+  function removePhoto(i: number) {
+    setPhotos(p => {
+      const next = p.filter((_, j) => j !== i);
+      return next;
+    });
+  }
+
+  async function handleSubmit() {
+    if (!hasContent || uploading) return;
+    setUploading(true);
+    setError(null);
+
+    try {
+      const errs: string[] = [];
+
+      // 1. Text
+      if (text.trim()) {
+        const r = await appendTextBlock(postId, text.trim()) as any;
+        if (r?.error) errs.push(r.error);
+      }
+
+      // 2. Photos — upload directly from browser, then save URLs
+      if (photos.length > 0) {
+        setUploadProgress({ done: 0, total: photos.length });
+        const { urls, uploadErrors } = await uploadPhotosToStorage(
+          photos.map(p => p.file),
+          `posts/${clubId}/${postId}`,
+          (done, total) => setUploadProgress({ done, total }),
+        );
+        if (uploadErrors.length) errs.push(...uploadErrors);
+        if (urls.length > 0) {
+          const r = await appendPhotosBlockFromUrls(postId, urls) as any;
+          if (r?.error) errs.push(r.error);
+        }
+      }
+
+      // 3. Video
+      if (videoOpen && videoUrl.trim()) {
+        const r = await appendVideoBlock(postId, videoUrl.trim(), videoCaption || undefined) as any;
+        if (r?.error) errs.push(r.error);
+      }
+
+      if (errs.length) {
+        setError(errs.join(" · "));
+        setUploading(false);
+        return;
+      }
+
+      router.refresh();
+      onClose();
+    } catch (e: any) {
+      setError(e?.message ?? "发布失败，请重试");
+      setUploading(false);
+    }
+  }
 
   return (
-    <div className="border-t border-[rgba(0,0,0,0.05)] animate-fade-up">
-      {error && <div className="px-5 pt-3 text-xs text-red-500">{error}</div>}
+    <div className="border-t border-[rgba(0,0,0,0.05)] px-5 py-4 space-y-3 animate-fade-up">
 
-      {/* Mode picker */}
-      {mode === "pick" && (
-        <div className="flex items-center gap-2 px-5 py-3.5">
-          <span className="text-[11px] font-medium text-zinc-400 mr-1">补充：</span>
-          {[
-            { m: "text" as const,   Icon: () => <span className="text-[12px] font-bold">T</span>,  label: "文字" },
-            { m: "photos" as const, Icon: () => <ImageIcon size={13} weight="duotone" />,           label: "照片" },
-            { m: "video" as const,  Icon: () => <YoutubeLogo size={13} weight="duotone" />,         label: "视频" },
-          ].map(({ m, Icon, label }) => (
-            <button
-              key={m} type="button" onClick={() => setMode(m)}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[12px] text-zinc-600 transition-all duration-200 hover:border-green-200 hover:bg-green-50 hover:text-green-700 active:scale-[0.97]"
-            >
-              <Icon />{label}
-            </button>
-          ))}
-          <button type="button" onClick={onClose} className="ml-auto text-zinc-300 hover:text-zinc-500 transition-colors">
-            <X size={13} />
-          </button>
+      {/* ── Error ── */}
+      {error && (
+        <div className="animate-fade-in rounded-xl bg-red-50 px-4 py-2.5 text-[12px] leading-relaxed text-red-600">
+          {error}
         </div>
       )}
 
-      {/* Text editor */}
-      {mode === "text" && (
-        <div className="px-5 pb-4 pt-3 space-y-3">
-          <textarea
-            ref={textAreaRef}
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="写点什么…"
-            rows={3}
-            className="notion-block text-[14px]"
-            style={{ lineHeight: "1.8" }}
-            onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; }}
-          />
-          <AppendActions onSubmit={handleSubmit} onBack={() => setMode("pick")} saving={saving}
-            disabled={!text.trim()} />
+      {/* ── Size warnings (soft, non-blocking) ── */}
+      {sizeWarnings.length > 0 && (
+        <div className="animate-fade-in rounded-xl bg-amber-50 px-4 py-2.5 text-[12px] leading-relaxed text-amber-700">
+          {sizeWarnings.map((w, i) => <div key={i}>{w}</div>)}
         </div>
       )}
 
-      {/* Photo editor */}
-      {mode === "photos" && (
-        <div className="px-5 pb-4 pt-3 space-y-3">
-          {previews.length === 0 ? (
-            <div
-              onDragOver={e => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={e => { e.preventDefault(); setDragging(false); handlePhotoFiles(e.dataTransfer.files); }}
-              onClick={() => photoInputRef.current?.click()}
-              className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl py-8 transition-all duration-300 ${
-                dragging ? "bg-green-50 border border-dashed border-green-300" : "bg-zinc-50 border border-dashed border-zinc-200 hover:bg-green-50/40 hover:border-green-200"
-              }`}
-            >
-              <ImageIcon size={20} weight="duotone" className="text-zinc-300" />
-              <p className="text-[12px] text-zinc-400">拖入或点击上传照片</p>
-              <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden"
-                onChange={e => handlePhotoFiles(e.target.files)} />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className={`grid gap-1 overflow-hidden rounded-xl ${previews.length === 1 ? "grid-cols-1" : previews.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
-                {previews.map((url, i) => (
-                  <div key={i} className="group/p relative aspect-square overflow-hidden bg-zinc-100">
-                    <img src={url} alt="" className="h-full w-full object-cover" />
-                    <button type="button" onClick={() => { setFiles(p => p.filter((_,j) => j!==i)); setPreviews(p => p.filter((_,j) => j!==i)); }}
-                      className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white group-hover/p:flex hover:bg-red-500">
-                      <X size={9} weight="bold" />
-                    </button>
-                  </div>
-                ))}
-                <div onClick={() => photoInputRef.current?.click()}
-                  className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 bg-zinc-50 hover:bg-zinc-100 transition-colors">
-                  <Plus size={16} className="text-zinc-300" />
-                  <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden"
-                    onChange={e => handlePhotoFiles(e.target.files)} />
-                </div>
+      {/* ── Text area — always visible, autofocused ── */}
+      <textarea
+        ref={textRef}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="补充内容……按 Enter 换行"
+        rows={2}
+        className="notion-block w-full text-[14px]"
+        style={{ lineHeight: "1.8" }}
+        onInput={e => {
+          const el = e.currentTarget;
+          el.style.height = "auto";
+          el.style.height = `${el.scrollHeight}px`;
+        }}
+        onKeyDown={e => {
+          if (e.key === "Escape") onClose();
+        }}
+      />
+
+      {/* ── Photo thumbnails — inline, no separate "upload" screen ── */}
+      {photos.length > 0 && (
+        <div className="overflow-hidden rounded-xl">
+          <div className={`grid gap-0.5 ${
+            photos.length === 1 ? "grid-cols-1"
+            : photos.length === 2 ? "grid-cols-2"
+            : "grid-cols-3"
+          }`}>
+            {photos.map((p, i) => (
+              <div key={i} className="group/p relative aspect-square overflow-hidden bg-zinc-100">
+                <img
+                  src={p.preview}
+                  alt=""
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover/p:scale-[1.04]"
+                />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  className="absolute right-1.5 top-1.5 hidden h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm group-hover/p:flex hover:bg-red-500 transition-colors duration-150"
+                >
+                  <X size={10} weight="bold" />
+                </button>
               </div>
-            </div>
-          )}
-          <AppendActions onSubmit={handleSubmit} onBack={() => setMode("pick")} saving={saving}
-            disabled={files.length === 0} />
+            ))}
+            {/* Quick-add more photos */}
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="flex aspect-square flex-col items-center justify-center gap-1 bg-zinc-50 hover:bg-zinc-100 transition-colors duration-150"
+            >
+              <Plus size={16} className="text-zinc-300" />
+              <span className="text-[10px] text-zinc-300">更多</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Video editor */}
-      {mode === "video" && (
-        <div className="px-5 pb-4 pt-3 space-y-3">
-          <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all duration-300 ${isValidVideo ? "border-green-200 bg-green-50/30" : "border-zinc-200 bg-zinc-50"}`}>
+      {/* ── Video URL input — toggled inline ── */}
+      {videoOpen && (
+        <div className="animate-fade-up space-y-2">
+          <div className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all duration-300 ${
+            isValidVideo ? "border-green-200 bg-green-50/30" : "border-zinc-200 bg-zinc-50"
+          }`}>
             <YoutubeLogo size={14} weight="duotone" className={isValidVideo ? "text-green-600 shrink-0" : "text-zinc-300 shrink-0"} />
-            <input autoFocus type="url" value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
+            <input
+              autoFocus
+              type="url"
+              value={videoUrl}
+              onChange={e => setVideoUrl(e.target.value)}
               placeholder="粘贴 YouTube 或 Bilibili 链接…"
-              className="flex-1 bg-transparent text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none" />
-            {isValidVideo && <CheckCircle size={13} className="shrink-0 text-green-600" weight="fill" />}
+              className="flex-1 bg-transparent text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none"
+            />
+            {isValidVideo
+              ? <CheckCircle size={14} className="shrink-0 text-green-600" weight="fill" />
+              : <button type="button" onClick={() => { setVideoOpen(false); setVideoUrl(""); }} className="text-zinc-300 hover:text-zinc-500"><X size={12} /></button>
+            }
           </div>
           {videoEmbedUrl && (
             <div className="overflow-hidden rounded-xl bg-zinc-950">
@@ -211,37 +260,83 @@ function AppendEditor({ postId, onClose }: { postId: string; onClose: () => void
             </div>
           )}
           {isValidVideo && (
-            <input type="text" value={videoCaption} onChange={e => setVideoCaption(e.target.value)}
+            <input
+              type="text"
+              value={videoCaption}
+              onChange={e => setVideoCaption(e.target.value)}
               placeholder="视频描述（可选）"
-              className="w-full bg-transparent text-[12px] text-zinc-500 placeholder:text-zinc-300 focus:outline-none" />
+              className="w-full bg-transparent text-[12px] text-zinc-500 placeholder:text-zinc-300 focus:outline-none"
+            />
           )}
-          <AppendActions onSubmit={handleSubmit} onBack={() => setMode("pick")} saving={saving}
-            disabled={!videoUrl.trim()} />
         </div>
       )}
-    </div>
-  );
-}
 
-function AppendActions({ onSubmit, onBack, saving, disabled }: {
-  onSubmit: () => void; onBack: () => void; saving: boolean; disabled: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <button type="button" onClick={onBack}
-        className="text-[12px] text-zinc-400 hover:text-zinc-600 transition-colors">
-        ← 返回
-      </button>
-      <button type="button" onClick={onSubmit} disabled={saving || disabled}
-        className="flex items-center gap-1.5 rounded-xl bg-green-700 px-4 py-1.5 text-[12px] font-bold text-white shadow-[0_2px_8px_rgba(21,128,61,0.25)] transition-all duration-200 hover:bg-green-800 active:scale-[0.97] disabled:opacity-40">
-        {saving && (
-          <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
+      {/* ── Toolbar ── */}
+      <div className="flex items-center gap-1.5">
+        {/* Photo button — click directly triggers file picker */}
+        <button
+          type="button"
+          onClick={() => photoInputRef.current?.click()}
+          title="添加照片"
+          className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${
+            photos.length > 0
+              ? "border-green-200 bg-green-50 text-green-600"
+              : "border-zinc-200 bg-white text-zinc-400 hover:border-green-200 hover:text-green-600"
+          }`}
+        >
+          <ImageIcon size={13} weight="duotone" />
+        </button>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={e => addPhotos(e.target.files)}
+        />
+
+        {/* Video button */}
+        <button
+          type="button"
+          onClick={() => { setVideoOpen(v => !v); }}
+          title="添加视频"
+          className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${
+            videoOpen
+              ? "border-green-200 bg-green-50 text-green-600"
+              : "border-zinc-200 bg-white text-zinc-400 hover:border-green-200 hover:text-green-600"
+          }`}
+        >
+          <YoutubeLogo size={13} weight="duotone" />
+        </button>
+
+        {/* Upload progress */}
+        {uploading && uploadProgress.total > 0 && (
+          <span className="ml-1 text-[11px] text-zinc-400">
+            上传 {uploadProgress.done}/{uploadProgress.total}
+          </span>
         )}
-        发布
-      </button>
+
+        {/* Cancel + Submit */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="ml-auto text-[12px] text-zinc-400 hover:text-zinc-600 transition-colors duration-150"
+        >
+          取消
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!hasContent || uploading}
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-green-700 text-white shadow-[0_2px_8px_rgba(21,128,61,0.25)] transition-all duration-200 hover:bg-green-800 hover:shadow-[0_4px_14px_rgba(21,128,61,0.35)] active:scale-[0.93] disabled:opacity-40"
+        >
+          {uploading
+            ? <SpinnerGap size={12} className="animate-spin" />
+            : <ArrowUp size={12} weight="bold" />
+          }
+        </button>
+      </div>
     </div>
   );
 }
@@ -259,7 +354,6 @@ function BlockContent({ block, isFirst, currentUserId, isAdmin }: {
 
   return (
     <div>
-      {/* Contributor header for non-first blocks */}
       {!isFirst && (
         <div className="flex items-center gap-2 px-5 py-2 border-t border-[rgba(0,0,0,0.04)]">
           <Avatar url={block.profiles.avatar_url} name={block.profiles.display_name} size="sm" />
@@ -269,7 +363,11 @@ function BlockContent({ block, isFirst, currentUserId, isAdmin }: {
           </span>
           {canDelete && (
             <button
-              onClick={async () => { if (!confirm("删除该内容块？")) return; await deleteBlock(block.id); router.refresh(); }}
+              onClick={async () => {
+                if (!confirm("删除该内容块？")) return;
+                await deleteBlock(block.id);
+                router.refresh();
+              }}
               className="ml-auto text-[11px] text-zinc-300 transition-colors hover:text-red-400"
             >
               删除
@@ -277,7 +375,6 @@ function BlockContent({ block, isFirst, currentUserId, isAdmin }: {
           )}
         </div>
       )}
-
       {block.type === "text" && block.post_block_items[0]?.body && (
         <p className="px-5 py-1.5 text-[15px] leading-[1.85] text-zinc-700 whitespace-pre-wrap">
           {block.post_block_items[0].body}
@@ -295,8 +392,9 @@ function BlockContent({ block, isFirst, currentUserId, isAdmin }: {
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
 
-export function PostCard({ post, currentUserId, isAdmin, clubSlug: _clubSlug }: {
-  post: PostData; currentUserId: string | null; isAdmin: boolean; clubSlug: string;
+export function PostCard({ post, currentUserId, isAdmin, clubId, clubSlug: _clubSlug }: {
+  post: PostData; currentUserId: string | null; isAdmin: boolean;
+  clubId: string; clubSlug: string;
 }) {
   const router = useRouter();
   const [appendOpen, setAppendOpen] = useState(false);
@@ -321,32 +419,26 @@ export function PostCard({ post, currentUserId, isAdmin, clubSlug: _clubSlug }: 
     ? firstBlock.post_block_items.filter(i => i.url).sort((a, b) => a.sort_order - b.sort_order).map(i => ({ id: i.id, url: i.url! }))
     : [];
 
-  const date = new Date(post.event_date);
-  const dateStr = date.toLocaleDateString("zh-CN", { month: "long", day: "numeric" });
+  const dateStr = new Date(post.event_date).toLocaleDateString("zh-CN", { month: "long", day: "numeric" });
 
   return (
-    <article className={`overflow-hidden rounded-[1.25rem] bg-white transition-all duration-[350ms] cubic-bezier(0.32,0.72,0,1) ${
+    <article className={`overflow-hidden rounded-[1.25rem] bg-white transition-all duration-[350ms] ${
       post.is_pinned
         ? "shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_-8px_rgba(0,0,0,0.08)] ring-1 ring-amber-300/30"
         : "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_20px_-6px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.05),0_16px_40px_-8px_rgba(0,0,0,0.12)]"
     }`}>
 
-      {/* Full-bleed hero photo */}
       {hasHeroPhoto && heroPhotos.length > 0 && (
-        <div className="overflow-hidden">
-          <PostPhotoGrid photos={heroPhotos} />
-        </div>
+        <div className="overflow-hidden"><PostPhotoGrid photos={heroPhotos} /></div>
       )}
 
-      {/* Card header */}
+      {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-1.5">
         <div className="flex items-center gap-2.5">
           <Avatar url={post.profiles.avatar_url} name={post.profiles.display_name} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold leading-tight text-zinc-900">
-                {post.profiles.display_name}
-              </span>
+              <span className="text-[13px] font-semibold leading-tight text-zinc-900">{post.profiles.display_name}</span>
               {post.is_pinned && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-600">
                   <PushPin size={8} weight="fill" /> 置顶
@@ -356,18 +448,13 @@ export function PostCard({ post, currentUserId, isAdmin, clubSlug: _clubSlug }: 
             <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-400">
               <span>{dateStr}</span>
               {post.location && (
-                <>
-                  <span className="text-zinc-200">·</span>
-                  <span className="flex items-center gap-0.5">
-                    <MapPin size={9} /> {post.location}
-                  </span>
-                </>
+                <><span className="text-zinc-200">·</span>
+                <span className="flex items-center gap-0.5"><MapPin size={9} /> {post.location}</span></>
               )}
             </div>
           </div>
         </div>
 
-        {/* Context menu trigger */}
         {hasMenu && (
           <div ref={menuRef} className="relative">
             <button
@@ -392,8 +479,7 @@ export function PostCard({ post, currentUserId, isAdmin, clubSlug: _clubSlug }: 
                     onClick={async () => { setMenuOpen(false); if (!confirm("确认删除该手记？")) return; await deletePost(post.id); router.refresh(); }}
                     className="flex w-full items-center gap-2.5 px-4 py-2 text-[13px] text-red-500 transition-colors hover:bg-red-50"
                   >
-                    <Trash size={13} />
-                    删除手记
+                    <Trash size={13} /> 删除手记
                   </button>
                 )}
               </div>
@@ -402,30 +488,21 @@ export function PostCard({ post, currentUserId, isAdmin, clubSlug: _clubSlug }: 
         )}
       </div>
 
-      {/* Post title */}
       {post.title && (
-        <h2 className="px-5 py-1 text-[16px] font-bold leading-snug text-zinc-900">
-          {post.title}
-        </h2>
+        <h2 className="px-5 py-1 text-[16px] font-bold leading-snug text-zinc-900">{post.title}</h2>
       )}
 
-      {/* Content blocks */}
       <div className="pb-2">
         {blocks.map((block, i) => {
           if (i === 0 && hasHeroPhoto) return null;
           return (
-            <BlockContent
-              key={block.id}
-              block={block}
-              isFirst={i === 0}
-              currentUserId={currentUserId}
-              isAdmin={isAdmin}
-            />
+            <BlockContent key={block.id} block={block} isFirst={i === 0}
+              currentUserId={currentUserId} isAdmin={isAdmin} />
           );
         })}
       </div>
 
-      {/* Append section */}
+      {/* Append trigger / editor */}
       {currentUserId && !appendOpen && (
         <div className="border-t border-[rgba(0,0,0,0.04)] px-5 py-2.5">
           <button
@@ -439,7 +516,11 @@ export function PostCard({ post, currentUserId, isAdmin, clubSlug: _clubSlug }: 
       )}
 
       {currentUserId && appendOpen && (
-        <AppendEditor postId={post.id} onClose={() => setAppendOpen(false)} />
+        <AppendEditor
+          postId={post.id}
+          clubId={clubId}
+          onClose={() => setAppendOpen(false)}
+        />
       )}
     </article>
   );

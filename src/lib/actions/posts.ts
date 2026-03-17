@@ -167,6 +167,34 @@ export async function appendPhotosBlock(postId: string, formData: FormData) {
   return { success: true };
 }
 
+/**
+ * Save a photos block using URLs already uploaded to Supabase Storage.
+ * Call this after uploadPhotosToStorage() on the client side.
+ */
+export async function appendPhotosBlockFromUrls(postId: string, urls: string[]) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  if (!urls.length) return { error: "No photos" };
+
+  const nextOrder = await getNextBlockOrder(supabase, postId);
+
+  const { data: block, error: blockErr } = await supabase
+    .from("post_blocks")
+    .insert({ post_id: postId, author_id: user.id, type: "photos", sort_order: nextOrder } as never)
+    .select()
+    .single();
+  if (blockErr) return { error: blockErr.message };
+
+  const blockId = (block as any).id;
+  const items = urls.map((url, i) => ({ block_id: blockId, url, sort_order: i }));
+  const { error } = await supabase.from("post_block_items").insert(items as never);
+  if (error) return { error: error.message };
+
+  revalidatePath("/[locale]/club/[slug]", "page");
+  return { success: true };
+}
+
 export async function deleteBlock(blockId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("post_blocks").delete().eq("id", blockId);

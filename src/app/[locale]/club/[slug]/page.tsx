@@ -121,6 +121,7 @@ export default async function ClubPostsPage({
                   post={post}
                   currentUserId={user?.id ?? null}
                   isAdmin={isAdmin}
+                  clubId={clubId}
                   clubSlug={slug}
                 />
               </div>

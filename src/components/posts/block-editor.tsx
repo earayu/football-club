@@ -13,7 +13,8 @@ import {
   Plus,
   Trash,
 } from "@phosphor-icons/react";
-import { createPost, appendTextBlock, appendPhotosBlock, appendVideoBlock } from "@/lib/actions/posts";
+import { createPost, appendTextBlock, appendVideoBlock, appendPhotosBlockFromUrls } from "@/lib/actions/posts";
+import { validatePhotoFiles, uploadPhotosToStorage } from "@/lib/upload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ function NotionPhotoBlock({
   block, onAddFiles, onRemoveFile, onRemoveBlock,
 }: {
   block: PhotoBlock;
-  onAddFiles: (f: File[], p: string[]) => void;
+  onAddFiles: (f: File[], p: string[], warnings: string[]) => void;
   onRemoveFile: (i: number) => void;
   onRemoveBlock: () => void;
 }) {
@@ -113,8 +114,9 @@ function NotionPhotoBlock({
 
   function handleFiles(files: FileList | null) {
     if (!files) return;
-    const arr = Array.from(files).filter(f => f.type.startsWith("image/"));
-    onAddFiles(arr, arr.map(f => URL.createObjectURL(f)));
+    const raw = Array.from(files).filter(f => f.type.startsWith("image/"));
+    const { valid, sizeErrors } = validatePhotoFiles(raw);
+    onAddFiles(valid, valid.map(f => URL.createObjectURL(f)), sizeErrors);
   }
 
   if (block.previews.length === 0) {
@@ -296,6 +298,7 @@ export function BlockEditor({
   const [location, setLocation] = useState("");
   const [eventDate, setEventDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [blocks, setBlocks] = useState<Block[]>([makeTextBlock()]);
+  const [sizeWarnings, setSizeWarnings] = useState<string[]>([]);
   const titleRef = useRef<HTMLInputElement>(null);
   const lastBlockIdRef = useRef<string | null>(null);
 
@@ -358,15 +361,24 @@ export function BlockEditor({
 
     const postId = res.post.id;
     const errors: string[] = [];
+
     for (const block of blocks) {
       if (block.type === "text" && block.content.trim()) {
         const r = await appendTextBlock(postId, block.content.trim()) as any;
         if (r?.error) errors.push(r.error);
+
       } else if (block.type === "photos" && block.files.length > 0) {
-        const fd = new FormData();
-        block.files.forEach(f => fd.append("photos", f));
-        const r = await appendPhotosBlock(postId, fd) as any;
-        if (r?.error) errors.push(r.error);
+        // Upload directly from the browser — no Server Action body limit
+        const { urls, uploadErrors } = await uploadPhotosToStorage(
+          block.files,
+          `posts/${clubId}/${postId}`,
+        );
+        if (uploadErrors.length) errors.push(...uploadErrors);
+        if (urls.length > 0) {
+          const r = await appendPhotosBlockFromUrls(postId, urls) as any;
+          if (r?.error) errors.push(r.error);
+        }
+
       } else if (block.type === "video" && block.url.trim()) {
         const r = await appendVideoBlock(postId, block.url.trim(), block.caption || undefined) as any;
         if (r?.error) errors.push(r.error);
@@ -446,6 +458,12 @@ export function BlockEditor({
           {error && (
             <div className="animate-fade-in rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</div>
           )}
+          {sizeWarnings.length > 0 && (
+            <div className="animate-fade-in rounded-xl bg-amber-50 px-4 py-2.5 text-[12px] leading-relaxed text-amber-700">
+              {sizeWarnings.map((w, i) => <div key={i}>{w}</div>)}
+              <button type="button" onClick={() => setSizeWarnings([])} className="mt-1 text-amber-500 underline">关闭</button>
+            </div>
+          )}
           {blocks.map((block, i) => (
             <div key={block.id} className="animate-fade-up" style={{ animationDelay: `${i * 30}ms` }}>
               {block.type === "text" && (
@@ -462,11 +480,14 @@ export function BlockEditor({
               {block.type === "photos" && (
                 <NotionPhotoBlock
                   block={block}
-                  onAddFiles={(f, p) => updateBlock(block.id, (b) => ({
-                    ...b,
-                    files: [...(b as PhotoBlock).files, ...f],
-                    previews: [...(b as PhotoBlock).previews, ...p],
-                  }))}
+                  onAddFiles={(f, p, warnings) => {
+                    if (warnings.length) setSizeWarnings(w => [...w, ...warnings]);
+                    updateBlock(block.id, (b) => ({
+                      ...b,
+                      files: [...(b as PhotoBlock).files, ...f],
+                      previews: [...(b as PhotoBlock).previews, ...p],
+                    }));
+                  }}
                   onRemoveFile={idx => updateBlock(block.id, (b) => ({
                     ...b,
                     files: (b as PhotoBlock).files.filter((_, j) => j !== idx),
