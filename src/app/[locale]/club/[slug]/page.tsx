@@ -37,9 +37,8 @@ export default async function ClubPostsPage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  const { data: club } = await supabase.from("clubs").select("id, name").eq("slug", slug).single();
+  const { data: club } = await supabase.from("clubs").select("id").eq("slug", slug).single();
   if (!club) notFound();
-
   const clubId = (club as any).id;
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -96,10 +95,11 @@ export default async function ClubPostsPage({
         />
       )}
 
-      <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8">
-        {/* Compose box — only for members */}
+      <div className="mx-auto max-w-3xl px-5 py-7 sm:px-8">
+
+        {/* Compose box */}
         {isMember && (
-          <div className="mb-5">
+          <div className="mb-5 animate-fade-up stagger-1">
             <BlockEditor
               clubId={clubId}
               userAvatarUrl={profile?.avatar_url}
@@ -111,37 +111,54 @@ export default async function ClubPostsPage({
         {/* Feed */}
         {posts.length > 0 ? (
           <div className="space-y-4">
-            {posts.map((post) => (
-              <PostCard
+            {posts.map((post, i) => (
+              <div
                 key={post.id}
-                post={post}
-                currentUserId={user?.id ?? null}
-                isAdmin={isAdmin}
-                clubSlug={slug}
-              />
+                className="animate-fade-up"
+                style={{ animationDelay: `${(i + (isMember ? 2 : 1)) * 60}ms` }}
+              >
+                <PostCard
+                  post={post}
+                  currentUserId={user?.id ?? null}
+                  isAdmin={isAdmin}
+                  clubSlug={slug}
+                />
+              </div>
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-16 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-50 to-green-100">
-              <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-                <circle cx="12" cy="12" r="9.5" stroke="#15803d" strokeWidth="1.5"/>
-                <path d="M12 4.5L14.5 8h-5L12 4.5zM12 19.5L9.5 16h5L12 19.5zM4.5 12L8 9.5v5L4.5 12zM19.5 12L16 14.5v-5L19.5 12z" fill="#15803d" opacity=".5"/>
-                <circle cx="12" cy="12" r="2" fill="#15803d" opacity=".8"/>
-              </svg>
+          <div
+            className="animate-fade-up stagger-2 flex flex-col items-center justify-center rounded-[1.25rem] border border-dashed border-[rgba(0,0,0,0.07)] py-20 text-center"
+            style={{ background: "rgba(255,255,255,0.6)" }}
+          >
+            {/* Double-bezel football icon */}
+            <div className="bezel-outer mb-5">
+              <div className="bezel-inner flex h-14 w-14 items-center justify-center bg-gradient-to-br from-green-50 to-green-100">
+                <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
+                  <circle cx="12" cy="12" r="9.5" stroke="#15803d" strokeWidth="1.5"/>
+                  <path
+                    d="M12 4.5L14.5 8h-5L12 4.5zM12 19.5L9.5 16h5L12 19.5zM4.5 12L8 9.5v5L4.5 12zM19.5 12L16 14.5v-5L19.5 12z"
+                    fill="#15803d" opacity=".4"
+                  />
+                  <circle cx="12" cy="12" r="2" fill="#15803d" opacity=".7"/>
+                </svg>
+              </div>
             </div>
             <p className="text-[15px] font-semibold text-zinc-700">还没有任何手记</p>
             {isMember ? (
-              <p className="mt-1.5 text-sm text-zinc-400">
-                发一条手记，记录你们的故事
+              <p className="mt-1.5 max-w-[240px] text-[13px] leading-relaxed text-zinc-400">
+                点击上方的输入框，记录今天的故事
               </p>
             ) : (
-              <p className="mt-1.5 text-sm text-zinc-400">
+              <p className="mt-1.5 max-w-[240px] text-[13px] leading-relaxed text-zinc-400">
                 加入俱乐部后即可发布手记
               </p>
             )}
           </div>
         )}
+
+        {/* Bottom padding for mobile comfort */}
+        <div className="h-12" />
       </div>
     </>
   );
