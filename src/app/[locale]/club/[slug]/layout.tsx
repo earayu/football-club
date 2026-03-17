@@ -3,6 +3,7 @@ import type { Database } from "@/lib/types/database";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { ClubTabs } from "./club-tabs";
 
 type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
 type MembershipRow = Database["public"]["Tables"]["memberships"]["Row"];
@@ -120,6 +121,7 @@ export default async function ClubLayout({
           </div>
         </div>
       </div>
+      <ClubTabs slug={slug} />
       {children}
     </div>
   );

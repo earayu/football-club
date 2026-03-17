@@ -3,11 +3,8 @@ import type { Database } from "@/lib/types/database";
 import { generateClubJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
-import { AlbumManager } from "./manage/albums/album-manager";
-import { InviteButton, MemberRow } from "./members/member-actions";
-import { ClubInfoSection } from "./club-info-section";
+import { PostCard, type PostData } from "@/components/posts/post-card";
+import { NewPostForm } from "@/components/posts/new-post-form";
 
 type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
 
@@ -18,12 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
+  const { data: club } = await supabase.from("clubs").select("*").eq("slug", slug).single();
   if (!club) return { title: "Club Not Found" };
   const row = club as ClubRow;
   return {
@@ -37,210 +29,113 @@ export async function generateMetadata({
   };
 }
 
-export default async function ClubPage({
+export default async function ClubPostsPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
   const supabase = await createClient();
-  const t = await getTranslations("club");
-  const tm = await getTranslations("member");
 
-  const { data } = await supabase
-    .from("clubs")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  const club = data as ClubRow | null;
+  const { data: club } = await supabase.from("clubs").select("id").eq("slug", slug).single();
   if (!club) notFound();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const clubId = (club as any).id;
 
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let isMember = false;
   let isAdmin = false;
+  let profile: any = null;
+
   if (user) {
     const { data: m } = await supabase
       .from("memberships")
       .select("role, status")
-      .eq("club_id", club.id)
+      .eq("club_id", clubId)
       .eq("user_id", user.id)
-      .eq("role", "admin")
       .eq("status", "active")
       .single();
-    isAdmin = !!m;
+    isMember = !!m;
+    isAdmin = (m as any)?.role === "admin";
+
+    const { data: p } = await supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single();
+    profile = p;
   }
 
-  // Fetch existing invite for this club (admins only)
-  let existingInvite: { code: string; expires_at: string | null } | null = null;
-  if (isAdmin) {
-    const { data: inv } = await supabase
-      .from("invitations")
-      .select("code, expires_at")
-      .eq("club_id", club.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    if (inv) existingInvite = inv as any;
-  }
-
-  // Fetch members (admins also see pending)
-  const { data: memberships } = await supabase
-    .from("memberships")
-    .select("*, profiles(*)")
-    .eq("club_id", club.id)
-    .in("status", isAdmin ? ["active", "pending"] : ["active"])
-    .order("joined_at", { ascending: true });
-
-  const pending = (memberships ?? []).filter((m: any) => m.status === "pending");
-  const activeMembers = (memberships ?? []).filter((m: any) => m.status === "active");
-
-  // Fetch albums
-  const { data: albumsRaw } = await supabase
-    .from("albums")
-    .select("id, title, description, cover_url, created_at, photos(id, url)")
-    .eq("club_id", club.id)
+  const { data: postsRaw } = await supabase
+    .from("posts")
+    .select(`
+      id, title, location, event_date, is_pinned, created_by, created_at,
+      profiles(display_name, avatar_url),
+      post_blocks(
+        id, type, author_id, sort_order, created_at,
+        profiles(display_name, avatar_url),
+        post_block_items(id, body, url, video_url, video_caption, sort_order)
+      )
+    `)
+    .eq("club_id", clubId)
+    .order("is_pinned", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const albums = (albumsRaw ?? []).map((a: any) => ({
-    id: a.id,
-    title: a.title,
-    description: a.description,
-    cover_url: a.cover_url || a.photos?.[0]?.url || null,
-    created_at: a.created_at,
-    photoCount: a.photos?.length ?? 0,
-  }));
+  const posts = (postsRaw ?? []) as unknown as PostData[];
+
+  const clubRaw = await supabase.from("clubs").select("*").eq("id", clubId).single();
+  const clubData = clubRaw.data as ClubRow | null;
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(generateClubJsonLd(club)),
-        }}
-      />
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-10">
+      {clubData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(generateClubJsonLd(clubData)) }}
+        />
+      )}
 
-        {/* Club description + inline edit for admins */}
-        <ClubInfoSection club={club} isAdmin={isAdmin} />
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+        {/* Compose box */}
+        {isMember && (
+          <div className="mb-6">
+            <NewPostForm
+              clubId={clubId}
+              userAvatarUrl={profile?.avatar_url}
+              userInitial={
+                (profile?.display_name || user?.email || "?")[0].toUpperCase()
+              }
+            />
+          </div>
+        )}
 
-        {/* Members */}
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <h2 className="text-lg font-bold text-gray-900">{t("members")}</h2>
-            {isAdmin && pending.length > 0 && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                {pending.length} pending
-              </span>
+        {/* Feed */}
+        {posts.length > 0 ? (
+          <div className="space-y-5">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={user?.id ?? null}
+                isAdmin={isAdmin}
+                clubSlug={slug}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-green-200 text-4xl shadow-inner">
+              ⚽
+            </div>
+            <h3 className="mt-5 text-lg font-semibold text-gray-800">还没有任何动态</h3>
+            {isMember ? (
+              <p className="mt-2 text-sm text-gray-400">
+                发一条手记，记录你们的故事 👆
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-gray-400">
+                加入俱乐部后即可发布手记
+              </p>
             )}
           </div>
-
-          {isAdmin ? (
-            // Admin view: list with action buttons + invite section
-            <div className="space-y-4">
-              <div className="space-y-2">
-                {pending.map((m: any) => (
-                  <MemberRow key={m.id} membership={m} isAdmin />
-                ))}
-                {activeMembers.map((m: any) => (
-                  <MemberRow key={m.id} membership={m} isAdmin />
-                ))}
-                {activeMembers.length === 0 && pending.length === 0 && (
-                  <p className="py-8 text-center text-sm text-gray-400">
-                    {t("noMembers")}
-                  </p>
-                )}
-              </div>
-              <InviteButton
-                clubId={club.id}
-                existingCode={existingInvite?.code}
-                existingExpiresAt={existingInvite?.expires_at}
-              />
-            </div>
-          ) : (
-            // Public view: avatar grid
-            activeMembers.length > 0 ? (
-              <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
-                {activeMembers.map((m: any) => (
-                  <div key={m.id} className="text-center">
-                    {m.profiles?.avatar_url ? (
-                      <img
-                        src={m.profiles.avatar_url}
-                        alt={m.profiles.display_name}
-                        className="mx-auto h-14 w-14 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-xl text-gray-400">
-                        👤
-                      </div>
-                    )}
-                    <p className="mt-2 text-xs font-medium text-gray-700 truncate">
-                      {m.profiles?.display_name || "—"}
-                    </p>
-                    {m.position && (
-                      <p className="text-xs text-gray-400">
-                        {tm(`positions.${m.position}`)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400">{t("noMembers")}</p>
-            )
-          )}
-        </section>
-
-        {/* Albums */}
-        <section>
-          {isAdmin ? (
-            // Admin view: full album manager with create/delete/upload
-            <AlbumManager clubId={club.id} clubSlug={slug} albums={albums} />
-          ) : (
-            // Public view: browse only
-            <>
-              <h2 className="mb-4 text-lg font-bold text-gray-900">
-                {t("albums")}
-              </h2>
-              {albums.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                  {albums.map((album) => (
-                    <Link
-                      key={album.id}
-                      href={`/club/${slug}/albums/${album.id}`}
-                      className="group overflow-hidden rounded-xl border border-gray-100 transition-shadow hover:shadow-md"
-                    >
-                      {album.cover_url ? (
-                        <img
-                          src={album.cover_url}
-                          alt={album.title}
-                          className="aspect-square w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex aspect-square items-center justify-center bg-gray-50 text-3xl text-gray-300">
-                          📷
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {album.title}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {album.photoCount} photo{album.photoCount !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400">No albums yet.</p>
-              )}
-            </>
-          )}
-        </section>
-
+        )}
       </div>
     </>
   );

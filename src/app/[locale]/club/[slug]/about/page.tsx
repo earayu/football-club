@@ -1,0 +1,124 @@
+import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/types/database";
+import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { ClubInfoSection } from "../club-info-section";
+import { InviteButton, MemberRow } from "../members/member-actions";
+
+type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
+
+export default async function AboutPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const t = await getTranslations("club");
+  const tm = await getTranslations("member");
+
+  const { data } = await supabase.from("clubs").select("*").eq("slug", slug).single();
+  const club = data as ClubRow | null;
+  if (!club) notFound();
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let isAdmin = false;
+  if (user) {
+    const { data: m } = await supabase
+      .from("memberships")
+      .select("role, status")
+      .eq("club_id", club.id)
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .eq("status", "active")
+      .single();
+    isAdmin = !!m;
+  }
+
+  let existingInvite: { code: string; expires_at: string | null } | null = null;
+  if (isAdmin) {
+    const { data: inv } = await supabase
+      .from("invitations")
+      .select("code, expires_at")
+      .eq("club_id", club.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (inv) existingInvite = inv as any;
+  }
+
+  const { data: memberships } = await supabase
+    .from("memberships")
+    .select("*, profiles(*)")
+    .eq("club_id", club.id)
+    .in("status", isAdmin ? ["active", "pending"] : ["active"])
+    .order("joined_at", { ascending: true });
+
+  const pending = (memberships ?? []).filter((m: any) => m.status === "pending");
+  const activeMembers = (memberships ?? []).filter((m: any) => m.status === "active");
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-10">
+      {/* Club description + inline edit */}
+      <ClubInfoSection club={club} isAdmin={isAdmin} />
+
+      {/* Members */}
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-900">{t("members")}</h2>
+          {isAdmin && pending.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              {pending.length} pending
+            </span>
+          )}
+        </div>
+
+        {isAdmin ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {pending.map((m: any) => <MemberRow key={m.id} membership={m} isAdmin />)}
+              {activeMembers.map((m: any) => <MemberRow key={m.id} membership={m} isAdmin />)}
+              {activeMembers.length === 0 && pending.length === 0 && (
+                <p className="py-8 text-center text-sm text-gray-400">{t("noMembers")}</p>
+              )}
+            </div>
+            <InviteButton
+              clubId={club.id}
+              existingCode={existingInvite?.code}
+              existingExpiresAt={existingInvite?.expires_at}
+            />
+          </div>
+        ) : (
+          activeMembers.length > 0 ? (
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
+              {activeMembers.map((m: any) => (
+                <div key={m.id} className="text-center">
+                  {m.profiles?.avatar_url ? (
+                    <img
+                      src={m.profiles.avatar_url}
+                      alt={m.profiles.display_name}
+                      className="mx-auto h-14 w-14 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-xl text-gray-400">
+                      👤
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs font-medium text-gray-700 truncate">
+                    {m.profiles?.display_name || "—"}
+                  </p>
+                  {m.position && (
+                    <p className="text-xs text-gray-400">{tm(`positions.${m.position}`)}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">{t("noMembers")}</p>
+          )
+        )}
+      </section>
+    </div>
+  );
+}
