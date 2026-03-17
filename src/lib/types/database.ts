@@ -125,58 +125,64 @@ export interface Database {
           created_at?: string;
         };
       };
-      albums: {
+      posts: {
         Row: {
           id: string;
           club_id: string;
-          title: string;
-          cover_url: string | null;
-          description: string | null;
+          title: string | null;
+          location: string | null;
+          event_date: string;
+          is_pinned: boolean;
           created_by: string;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           club_id: string;
-          title: string;
-          cover_url?: string | null;
-          description?: string | null;
+          title?: string | null;
+          location?: string | null;
+          event_date?: string;
+          is_pinned?: boolean;
           created_by: string;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           club_id?: string;
-          title?: string;
-          cover_url?: string | null;
-          description?: string | null;
+          title?: string | null;
+          location?: string | null;
+          event_date?: string;
+          is_pinned?: boolean;
           created_by?: string;
           created_at?: string;
+          updated_at?: string;
         };
       };
-      photos: {
+      post_entries: {
         Row: {
           id: string;
-          album_id: string;
-          url: string;
-          caption: string | null;
-          uploaded_by: string;
+          post_id: string;
+          author_id: string;
+          sort_order: number;
+          content: Json;
           created_at: string;
         };
         Insert: {
           id?: string;
-          album_id: string;
-          url: string;
-          caption?: string | null;
-          uploaded_by: string;
+          post_id: string;
+          author_id: string;
+          sort_order?: number;
+          content?: Json;
           created_at?: string;
         };
         Update: {
           id?: string;
-          album_id?: string;
-          url?: string;
-          caption?: string | null;
-          uploaded_by?: string;
+          post_id?: string;
+          author_id?: string;
+          sort_order?: number;
+          content?: Json;
           created_at?: string;
         };
       };

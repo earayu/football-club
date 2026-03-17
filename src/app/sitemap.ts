@@ -33,7 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       },
       {
-        url: `${baseUrl}/${locale}/club/${club.slug}/albums`,
+        url: `${baseUrl}/${locale}/club/${club.slug}/about`,
         lastModified: new Date(club.created_at),
         changeFrequency: "weekly" as const,
         priority: 0.6,

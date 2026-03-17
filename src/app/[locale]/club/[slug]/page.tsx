@@ -4,9 +4,11 @@ import { generateClubJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PostCard, type PostData } from "@/components/posts/post-card";
-import { BlockEditor } from "@/components/posts/block-editor";
+import { PostComposer } from "@/components/posts/post-composer";
 
 type ClubRow = Database["public"]["Tables"]["clubs"]["Row"];
+type ProfileSummary = Pick<Database["public"]["Tables"]["profiles"]["Row"], "display_name" | "avatar_url">;
+type MembershipSummary = Pick<Database["public"]["Tables"]["memberships"]["Row"], "role" | "status">;
 
 export async function generateMetadata({
   params,
@@ -39,13 +41,13 @@ export default async function ClubPostsPage({
 
   const { data: club } = await supabase.from("clubs").select("id").eq("slug", slug).single();
   if (!club) notFound();
-  const clubId = (club as any).id;
+  const clubId = (club as Pick<ClubRow, "id">).id;
 
   const { data: { user } } = await supabase.auth.getUser();
 
   let isMember = false;
   let isAdmin = false;
-  let profile: any = null;
+  let profile: ProfileSummary | null = null;
 
   if (user) {
     const { data: m } = await supabase
@@ -56,14 +58,14 @@ export default async function ClubPostsPage({
       .eq("status", "active")
       .single();
     isMember = !!m;
-    isAdmin = (m as any)?.role === "admin";
+    isAdmin = (m as MembershipSummary | null)?.role === "admin";
 
     const { data: p } = await supabase
       .from("profiles")
       .select("display_name, avatar_url")
       .eq("id", user.id)
       .single();
-    profile = p;
+    profile = p as ProfileSummary | null;
   }
 
   const { data: postsRaw } = await supabase
@@ -71,10 +73,10 @@ export default async function ClubPostsPage({
     .select(`
       id, title, location, event_date, is_pinned, created_by, created_at,
       profiles(display_name, avatar_url),
-      post_blocks(
-        id, type, author_id, sort_order, created_at,
+      updated_at,
+      post_entries(
+        id, post_id, author_id, sort_order, created_at, content,
         profiles(display_name, avatar_url),
-        post_block_items(id, body, url, video_url, video_caption, sort_order)
       )
     `)
     .eq("club_id", clubId)
@@ -100,7 +102,8 @@ export default async function ClubPostsPage({
         {/* Compose box */}
         {isMember && (
           <div className="mb-5 animate-fade-up stagger-1">
-            <BlockEditor
+            <PostComposer
+              mode="create"
               clubId={clubId}
               userAvatarUrl={profile?.avatar_url}
               userInitial={(profile?.display_name || user?.email || "?")[0].toUpperCase()}
@@ -122,7 +125,8 @@ export default async function ClubPostsPage({
                   currentUserId={user?.id ?? null}
                   isAdmin={isAdmin}
                   clubId={clubId}
-                  clubSlug={slug}
+                  currentUserAvatarUrl={profile?.avatar_url}
+                  currentUserInitial={(profile?.display_name || user?.email || "?")[0].toUpperCase()}
                 />
               </div>
             ))}
