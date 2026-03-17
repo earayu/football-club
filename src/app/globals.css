@@ -117,6 +117,56 @@ textarea { field-sizing: content; }
   transition: box-shadow 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+.post-composer-view .bn-container,
+.post-rich-view .bn-container {
+  background: transparent;
+}
+
+.post-composer-view .bn-editor {
+  min-height: 24rem;
+  padding: 1.1rem 1.15rem 1.4rem;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.post-composer-view .bn-block-content {
+  border-radius: 1rem;
+}
+
+.post-composer-view .bn-inline-content {
+  color: #171717;
+}
+
+.post-composer-view .bn-toolbar {
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 64px -40px rgba(15, 23, 42, 0.28);
+}
+
+.post-composer-view .bn-suggestion-menu,
+.post-composer-view .bn-drag-handle-menu {
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 28px 70px -40px rgba(15, 23, 42, 0.3);
+}
+
+.post-rich-view .bn-editor {
+  padding: 0;
+  min-height: 0;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.post-rich-view .bn-side-menu,
+.post-rich-view .bn-toolbar,
+.post-rich-view .bn-suggestion-menu {
+  display: none !important;
+}
+
+.post-rich-view .bn-block {
+  margin-block: 0.4rem;
+}
+
 /* Notion-like block: transparent textarea */
 .notion-block {
   width: 100%;

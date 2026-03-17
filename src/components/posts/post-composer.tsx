@@ -250,10 +250,10 @@ export function PostComposer({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group flex w-full items-center gap-3 rounded-2xl border border-[rgba(0,0,0,0.06)] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_-4px_rgba(0,0,0,0.06)] transition-all duration-[350ms] hover:border-green-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06),0_12px_30px_-8px_rgba(0,0,0,0.1)]"
+        className="group flex w-full items-center gap-4 rounded-[1.75rem] border border-[rgba(0,0,0,0.06)] bg-white/92 px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_18px_50px_-32px_rgba(0,0,0,0.14)] transition-all duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-green-200/70 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06),0_20px_60px_-28px_rgba(0,0,0,0.14)]"
       >
         <Avatar url={userAvatarUrl} initial={userInitial} />
-        <span className="flex-1 text-left text-[14px] text-zinc-400 group-hover:text-zinc-500 transition-colors duration-200">
+        <span className="flex-1 text-left text-[15px] font-medium text-zinc-400 group-hover:text-zinc-500 transition-colors duration-200">
           今天发生了什么？
         </span>
         <div className="flex items-center gap-2 text-zinc-300 transition-colors duration-200 group-hover:text-zinc-400">
@@ -266,11 +266,11 @@ export function PostComposer({
   }
 
   return (
-    <div className="editor-surface animate-scale-in overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-[rgba(0,0,0,0.05)] px-5 py-3.5">
+    <div className="editor-surface animate-scale-in overflow-hidden rounded-[2rem]">
+      <div className="flex items-center gap-3 border-b border-[rgba(0,0,0,0.05)] px-6 py-4 sm:px-7">
         <Avatar url={userAvatarUrl} initial={userInitial} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-zinc-900">
+          <p className="text-[14px] font-semibold text-zinc-900">
             {mode === "create" ? "发布手记" : "补充内容"}
           </p>
           <p className="text-[11px] text-zinc-400">
@@ -292,26 +292,26 @@ export function PostComposer({
         </button>
       </div>
 
-      <div className="space-y-3 px-5 py-4">
+      <div className="space-y-4 px-6 py-5 sm:px-7 sm:py-6">
         {mode === "create" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="标题（可选）"
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-green-400 focus:outline-none"
+              className="rounded-[1.15rem] border border-zinc-200/80 bg-white px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 shadow-[0_14px_35px_-28px_rgba(15,23,42,0.24)] focus:border-green-400 focus:outline-none"
             />
             <input
               value={location}
               onChange={(event) => setLocation(event.target.value)}
               placeholder="地点（可选）"
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-green-400 focus:outline-none"
+              className="rounded-[1.15rem] border border-zinc-200/80 bg-white px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 shadow-[0_14px_35px_-28px_rgba(15,23,42,0.24)] focus:border-green-400 focus:outline-none"
             />
             <input
               type="datetime-local"
               value={eventDate}
               onChange={(event) => setEventDate(event.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-800 focus:border-green-400 focus:outline-none sm:col-span-2"
+              className="rounded-[1.15rem] border border-zinc-200/80 bg-white px-4 py-3 text-sm text-zinc-800 shadow-[0_14px_35px_-28px_rgba(15,23,42,0.24)] focus:border-green-400 focus:outline-none sm:col-span-2"
             />
           </div>
         ) : null}
@@ -337,7 +337,7 @@ export function PostComposer({
             event.stopPropagation();
             void insertExternalUrl(editor, dropped);
           }}
-          className="rounded-2xl border border-zinc-200/80 bg-white"
+          className="rounded-[1.65rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,249,0.92))] shadow-[0_30px_80px_-52px_rgba(15,23,42,0.26)]"
         >
           <BlockNoteView
             editor={editor}
@@ -348,12 +348,12 @@ export function PostComposer({
             onChange={(currentEditor) => {
               setHasContent(hasMeaningfulContent(currentEditor.document as PostEntryDocument));
             }}
-            className="min-h-[220px]"
+            className={`post-composer-view ${mode === "create" ? "min-h-[26rem]" : "min-h-[20rem]"}`}
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-[rgba(0,0,0,0.05)] px-5 py-3">
+      <div className="flex items-center gap-3 border-t border-[rgba(0,0,0,0.05)] px-6 py-4 sm:px-7">
         {(uploadingCount > 0 || resolvingCount > 0) ? (
           <span className="text-[11px] text-zinc-400">
             {uploadingCount > 0 ? `上传中 ${uploadingCount}` : `解析链接中 ${resolvingCount}`}

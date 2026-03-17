@@ -11,8 +11,8 @@ import {
 } from "@phosphor-icons/react";
 import { deletePost, deletePostEntry, togglePinPost } from "@/lib/actions/rich-posts";
 import { summarizeEntryContent, type PostEntryDocument } from "@/lib/posts/document";
-import { PostComposer } from "@/components/posts/post-composer";
-import { RichContentView } from "@/components/posts/rich-content-view";
+import { PostComposer } from "@/components/posts/post-composer-lazy";
+import { RichContentView } from "@/components/posts/rich-content-view-lazy";
 
 export type PostEntryData = {
   id: string;
@@ -82,7 +82,7 @@ function PostEntrySection({
   return (
     <section>
       {!isFirst && (
-        <div className="flex items-center gap-2 px-5 py-2 border-t border-[rgba(0,0,0,0.04)]">
+        <div className="flex items-center gap-2 px-6 py-3 border-t border-[rgba(0,0,0,0.04)] sm:px-7">
           <Avatar
             url={entry.profiles.avatar_url}
             name={entry.profiles.display_name}
@@ -108,7 +108,7 @@ function PostEntrySection({
           ) : null}
         </div>
       )}
-      <div className={isFirst ? "px-5 pb-4" : "px-5 py-3"}>
+      <div className={isFirst ? "px-6 pb-6 sm:px-7" : "px-6 py-4 sm:px-7"}>
         <RichContentView document={entry.content} />
       </div>
     </section>
@@ -158,22 +158,22 @@ export function PostCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-[1.25rem] bg-white transition-all duration-[350ms] ${
+      className={`overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(251,252,251,0.95))] transition-all duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] ${
         post.is_pinned
-          ? "shadow-[0_2px_8px_rgba(0,0,0,0.04),0_12px_32px_-8px_rgba(0,0,0,0.08)] ring-1 ring-amber-300/30"
-          : "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_20px_-6px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.05),0_16px_40px_-8px_rgba(0,0,0,0.12)]"
+          ? "shadow-[0_20px_60px_-36px_rgba(15,23,42,0.22)] ring-1 ring-amber-300/40"
+          : "shadow-[0_20px_60px_-38px_rgba(15,23,42,0.18)] hover:-translate-y-0.5 hover:shadow-[0_26px_70px_-36px_rgba(15,23,42,0.22)]"
       }`}
     >
-      <div className="flex items-center justify-between px-5 pt-4 pb-1.5">
+      <div className="flex items-center justify-between px-6 pt-6 pb-2 sm:px-7">
         <div className="flex items-center gap-2.5">
           <Avatar url={post.profiles.avatar_url} name={post.profiles.display_name} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold leading-tight text-zinc-900">
+              <span className="text-[14px] font-semibold leading-tight text-zinc-900">
                 {post.profiles.display_name}
               </span>
               {post.is_pinned ? (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-600">
+                <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-[10px] font-bold leading-none text-amber-600">
                   <PushPin size={8} weight="fill" /> 置顶
                 </span>
               ) : null}
@@ -242,7 +242,7 @@ export function PostCard({
       </div>
 
       {post.title ? (
-        <h2 className="px-5 py-1 text-[16px] font-bold leading-snug text-zinc-900">
+        <h2 className="px-6 py-1 text-[20px] font-black leading-[1.12] tracking-[-0.03em] text-zinc-950 sm:px-7">
           {post.title}
         </h2>
       ) : null}
@@ -260,11 +260,11 @@ export function PostCard({
       </div>
 
       {currentUserId && !appendOpen ? (
-        <div className="border-t border-[rgba(0,0,0,0.04)] px-5 py-2.5">
+        <div className="border-t border-[rgba(0,0,0,0.04)] px-6 py-3.5 sm:px-7">
           <button
             type="button"
             onClick={() => setAppendOpen(true)}
-            className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 transition-all duration-200 hover:text-green-700"
+            className="flex items-center gap-1.5 rounded-full bg-zinc-50 px-3.5 py-2 text-[12px] font-medium text-zinc-500 transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-green-50 hover:text-green-700"
           >
             <Plus size={13} weight="bold" /> 补充内容
           </button>
@@ -272,7 +272,7 @@ export function PostCard({
       ) : null}
 
       {currentUserId && appendOpen ? (
-        <div className="border-t border-[rgba(0,0,0,0.04)] px-5 py-3">
+        <div className="border-t border-[rgba(0,0,0,0.04)] px-6 py-4 sm:px-7">
           <PostComposer
             mode="append"
             clubId={clubId}

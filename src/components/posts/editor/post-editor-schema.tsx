@@ -66,19 +66,19 @@ export function LinkPreviewCard({
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm transition-all duration-200 hover:border-green-300 hover:shadow-md"
+      className="group block overflow-hidden rounded-[1.6rem] border border-zinc-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,249,248,0.92))] shadow-[0_24px_60px_-44px_rgba(15,23,42,0.26)] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-emerald-300/80 hover:shadow-[0_28px_70px_-42px_rgba(15,23,42,0.3)]"
     >
       {image ? (
         <div className="aspect-[1.8/1] overflow-hidden bg-zinc-100">
           <img
             src={image}
             alt=""
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.03]"
           />
         </div>
       ) : null}
-      <div className="space-y-1 px-4 py-3">
-        <p className="line-clamp-2 text-[14px] font-semibold text-zinc-900">
+      <div className="space-y-1.5 px-4 py-3.5">
+        <p className="line-clamp-2 text-[14px] font-semibold leading-6 text-zinc-900">
           {resolvedTitle}
         </p>
         {resolvedDescription ? (
@@ -86,7 +86,7 @@ export function LinkPreviewCard({
             {resolvedDescription}
           </p>
         ) : null}
-        <p className="truncate text-[11px] font-medium text-zinc-400">{hostname}</p>
+        <p className="truncate text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-400">{hostname}</p>
       </div>
     </a>
   );

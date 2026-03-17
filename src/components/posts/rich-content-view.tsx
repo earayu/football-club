@@ -33,7 +33,7 @@ export function RichContentView({
       tableHandles={false}
       emojiPicker={false}
       comments={false}
-      className="rounded-2xl"
+      className="post-rich-view rounded-2xl"
     />
   );
 }
