@@ -4,7 +4,7 @@
 
 **Goal:** Add a block-based collaborative journal feed (手记) as the primary club showcase, replacing the Albums system.
 
-**Architecture:** Three new DB tables (`posts`, `post_blocks`, `post_block_photos`). Club's `/club/[slug]` becomes the posts feed; existing content moves to `/club/[slug]/about`. Members append typed blocks (text/photos/video) to any post.
+**Architecture:** Three new DB tables (`posts`, `post_blocks`, `post_block_items`). `post_blocks` holds structural metadata only; all content (text body, photo URLs, video URLs) lives in `post_block_items`. Club's `/club/[slug]` becomes the posts feed; existing content moves to `/club/[slug]/about`. Members append typed blocks (text/photos/video) to any post.
 
 **Tech Stack:** Next.js 15 App Router, Supabase (PostgreSQL + Storage), TypeScript, Tailwind CSS v4.
 
@@ -42,33 +42,33 @@ create table public.posts (
 );
 create index idx_posts_club on public.posts(club_id);
 
--- post_blocks table
+-- post_blocks table (structural metadata only)
 create table public.post_blocks (
-  id            uuid primary key default gen_random_uuid(),
-  post_id       uuid not null references public.posts(id) on delete cascade,
-  author_id     uuid not null references public.profiles(id),
-  type          text not null check (type in ('text', 'photos', 'video')),
-  sort_order    int not null default 0,
-  body          text,
-  video_url     text,
-  video_caption text,
-  created_at    timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  post_id     uuid not null references public.posts(id) on delete cascade,
+  author_id   uuid not null references public.profiles(id),
+  type        text not null check (type in ('text', 'photos', 'video')),
+  sort_order  int not null default 0,
+  created_at  timestamptz not null default now()
 );
 create index idx_post_blocks_post on public.post_blocks(post_id);
 
--- post_block_photos table
-create table public.post_block_photos (
-  id          uuid primary key default gen_random_uuid(),
-  block_id    uuid not null references public.post_blocks(id) on delete cascade,
-  url         text not null,
-  sort_order  int not null default 0
+-- post_block_items table (all content — 1 row for text/video, N rows for photos)
+create table public.post_block_items (
+  id            uuid primary key default gen_random_uuid(),
+  block_id      uuid not null references public.post_blocks(id) on delete cascade,
+  body          text,           -- type='text': text content
+  url           text,           -- type='photos': photo URL
+  video_url     text,           -- type='video': YouTube/Bilibili URL
+  video_caption text,           -- type='video': optional caption
+  sort_order    int not null default 0
 );
-create index idx_post_block_photos_block on public.post_block_photos(block_id);
+create index idx_post_block_items_block on public.post_block_items(block_id);
 
 -- RLS
 alter table public.posts enable row level security;
 alter table public.post_blocks enable row level security;
-alter table public.post_block_photos enable row level security;
+alter table public.post_block_items enable row level security;
 
 -- posts policies
 create policy "posts_select" on public.posts for select using (true);
@@ -98,11 +98,11 @@ create policy "post_blocks_delete" on public.post_blocks for delete
     )
   );
 
--- post_block_photos policies
-create policy "post_block_photos_select" on public.post_block_photos for select using (true);
-create policy "post_block_photos_insert" on public.post_block_photos for insert
+-- post_block_items policies (cascade delete handles cleanup via post_blocks)
+create policy "post_block_items_select" on public.post_block_items for select using (true);
+create policy "post_block_items_insert" on public.post_block_items for insert
   with check (auth.uid() is not null);
-create policy "post_block_photos_delete" on public.post_block_photos for delete
+create policy "post_block_items_delete" on public.post_block_items for delete
   using (
     exists (
       select 1 from public.post_blocks pb where pb.id = block_id
@@ -123,7 +123,8 @@ In SQL Editor: `select * from public.posts limit 1;` — should return empty res
 
 ```bash
 git add supabase/migrations/00005_posts.sql
-git commit -m "feat: add posts, post_blocks, post_block_photos tables with RLS"
+git commit -m "feat: add posts, post_blocks, post_block_items tables with RLS"
+
 ```
 
 ---
@@ -257,12 +258,19 @@ export async function appendTextBlock(postId: string, body: string) {
 
   const nextOrder = ((existing as any)?.sort_order ?? -1) + 1;
 
-  const { error } = await supabase.from("post_blocks").insert({
-    post_id: postId,
-    author_id: user.id,
-    type: "text",
+  // Insert block (metadata only)
+  const { data: block, error: blockErr } = await supabase
+    .from("post_blocks")
+    .insert({ post_id: postId, author_id: user.id, type: "text", sort_order: nextOrder } as never)
+    .select()
+    .single();
+  if (blockErr) return { error: blockErr.message };
+
+  // Insert content item
+  const { error } = await supabase.from("post_block_items").insert({
+    block_id: (block as any).id,
     body,
-    sort_order: nextOrder,
+    sort_order: 0,
   } as never);
 
   if (error) return { error: error.message };
@@ -289,13 +297,20 @@ export async function appendVideoBlock(
 
   const nextOrder = ((existing as any)?.sort_order ?? -1) + 1;
 
-  const { error } = await supabase.from("post_blocks").insert({
-    post_id: postId,
-    author_id: user.id,
-    type: "video",
+  // Insert block (metadata only)
+  const { data: block, error: blockErr } = await supabase
+    .from("post_blocks")
+    .insert({ post_id: postId, author_id: user.id, type: "video", sort_order: nextOrder } as never)
+    .select()
+    .single();
+  if (blockErr) return { error: blockErr.message };
+
+  // Insert content item
+  const { error } = await supabase.from("post_block_items").insert({
+    block_id: (block as any).id,
     video_url: videoUrl,
     video_caption: caption || null,
-    sort_order: nextOrder,
+    sort_order: 0,
   } as never);
 
   if (error) return { error: error.message };
@@ -359,7 +374,7 @@ export async function appendPhotosBlock(postId: string, formData: FormData) {
 
     const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
 
-    await supabase.from("post_block_photos").insert({
+    await supabase.from("post_block_items").insert({
       block_id: blockId,
       url: publicUrl,
       sort_order: i,
@@ -662,7 +677,14 @@ type Block = {
   sort_order: number;
   created_at: string;
   profiles: { display_name: string; avatar_url: string | null };
-  post_block_photos: { id: string; url: string; sort_order: number }[];
+  post_block_items: {
+    id: string;
+    body: string | null;
+    url: string | null;
+    video_url: string | null;
+    video_caption: string | null;
+    sort_order: number;
+  }[];
 };
 
 type Post = {
@@ -804,7 +826,8 @@ function BlockItem({
   showAuthor: boolean;
 }) {
   const canDelete = isAdmin || block.author_id === currentUserId;
-  const typeLabel = block.type === "text" ? "追加了文字" : block.type === "photos" ? `追加了 ${block.post_block_photos.length} 张照片` : "追加了视频";
+  const photoCount = block.post_block_items.filter((i) => i.url).length;
+  const typeLabel = block.type === "text" ? "追加了文字" : block.type === "photos" ? `追加了 ${photoCount} 张照片` : "追加了视频";
 
   return (
     <div className="relative">
@@ -832,19 +855,28 @@ function BlockItem({
       )}
 
       <div className={showAuthor ? "px-0" : "px-5"}>
-        {block.type === "text" && block.body && (
-          <p className="px-5 pb-1 text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">{block.body}</p>
-        )}
-        {block.type === "photos" && block.post_block_photos.length > 0 && (
+        {block.type === "text" && (() => {
+          const item = block.post_block_items[0];
+          return item?.body ? (
+            <p className="px-5 pb-1 text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">{item.body}</p>
+          ) : null;
+        })()}
+        {block.type === "photos" && block.post_block_items.filter((i) => i.url).length > 0 && (
           <PostPhotoGrid
-            photos={block.post_block_photos.sort((a, b) => a.sort_order - b.sort_order)}
+            photos={block.post_block_items
+              .filter((i) => i.url)
+              .sort((a, b) => a.sort_order - b.sort_order)
+              .map((i) => ({ id: i.id, url: i.url! }))}
           />
         )}
-        {block.type === "video" && block.video_url && (
-          <div className="px-5 pb-1">
-            <VideoEmbed url={block.video_url} caption={block.video_caption} />
-          </div>
-        )}
+        {block.type === "video" && (() => {
+          const item = block.post_block_items[0];
+          return item?.video_url ? (
+            <div className="px-5 pb-1">
+              <VideoEmbed url={item.video_url} caption={item.video_caption} />
+            </div>
+          ) : null;
+        })()}
       </div>
     </div>
   );
@@ -1142,7 +1174,7 @@ export default async function ClubPostsPage({
       post_blocks(
         *,
         profiles(display_name, avatar_url),
-        post_block_photos(id, url, sort_order)
+        post_block_items(id, body, url, video_url, video_caption, sort_order)
       )
     `)
     .eq("club_id", (club as any).id)

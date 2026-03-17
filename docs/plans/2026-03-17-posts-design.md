@@ -59,33 +59,40 @@ create index idx_posts_club on public.posts(club_id);
 ```
 
 ### `post_blocks` table
+Structural metadata only — no content columns.
 ```sql
 create table public.post_blocks (
-  id            uuid primary key default gen_random_uuid(),
-  post_id       uuid not null references public.posts(id) on delete cascade,
-  author_id     uuid not null references public.profiles(id),
-  type          text not null check (type in ('text', 'photos', 'video')),
-  sort_order    int not null default 0,
-  body          text,           -- used when type='text'
-  video_url     text,           -- used when type='video'
-  video_caption text,           -- used when type='video' (optional)
-  created_at    timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  post_id     uuid not null references public.posts(id) on delete cascade,
+  author_id   uuid not null references public.profiles(id),
+  type        text not null check (type in ('text', 'photos', 'video')),
+  sort_order  int not null default 0,
+  created_at  timestamptz not null default now()
 );
 
 create index idx_post_blocks_post on public.post_blocks(post_id);
 ```
 
-### `post_block_photos` table
+### `post_block_items` table
+All content lives here — one row per text/video block, multiple rows per photos block.
 ```sql
-create table public.post_block_photos (
-  id          uuid primary key default gen_random_uuid(),
-  block_id    uuid not null references public.post_blocks(id) on delete cascade,
-  url         text not null,
-  sort_order  int not null default 0
+create table public.post_block_items (
+  id            uuid primary key default gen_random_uuid(),
+  block_id      uuid not null references public.post_blocks(id) on delete cascade,
+  body          text,           -- type='text': the text content
+  url           text,           -- type='photos': photo URL
+  video_url     text,           -- type='video': YouTube/Bilibili URL
+  video_caption text,           -- type='video': optional caption
+  sort_order    int not null default 0
 );
 
-create index idx_post_block_photos_block on public.post_block_photos(block_id);
+create index idx_post_block_items_block on public.post_block_items(block_id);
 ```
+
+**Row shape by block type:**
+- `text` → 1 row, `body` set
+- `video` → 1 row, `video_url` + optional `video_caption` set
+- `photos` → N rows, each with `url` set, ordered by `sort_order`
 
 ---
 
@@ -94,8 +101,8 @@ create index idx_post_block_photos_block on public.post_block_photos(block_id);
 | Table | SELECT | INSERT | UPDATE | DELETE |
 |-------|--------|--------|--------|--------|
 | posts | public | active members | created_by or admin | created_by or admin |
-| post_blocks | public | active members | author_id | author_id or admin |
-| post_block_photos | public | active members | — | via post_blocks cascade |
+| post_blocks | public | active members | — | author_id or admin |
+| post_block_items | public | active members | — | via post_blocks cascade |
 
 ---
 
