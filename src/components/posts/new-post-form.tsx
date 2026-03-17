@@ -54,14 +54,14 @@ export function NewPostForm({
     const location = (fd.get("location") as string)?.trim();
     const eventDate = fd.get("eventDate") as string;
 
-    const postResult = await createPost(clubId, { title, location, eventDate });
+    const postResult = await createPost(clubId, { title, location, eventDate }) as any;
     if (postResult.error || !postResult.post) {
       setError(postResult.error ?? "Failed to create post");
       setSaving(false);
       return;
     }
 
-    const postId = (postResult.post as any).id;
+    const postId = postResult.post.id;
 
     if (blockType === "text") {
       const body = (fd.get("body") as string)?.trim();
