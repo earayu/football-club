@@ -37,7 +37,7 @@ export default async function ClubPostsPage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  const { data: club } = await supabase.from("clubs").select("id").eq("slug", slug).single();
+  const { data: club } = await supabase.from("clubs").select("id, name").eq("slug", slug).single();
   if (!club) notFound();
 
   const clubId = (club as any).id;
@@ -59,7 +59,11 @@ export default async function ClubPostsPage({
     isMember = !!m;
     isAdmin = (m as any)?.role === "admin";
 
-    const { data: p } = await supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single();
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("id", user.id)
+      .single();
     profile = p;
   }
 
@@ -92,23 +96,21 @@ export default async function ClubPostsPage({
         />
       )}
 
-      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
-        {/* Compose box */}
+      <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8">
+        {/* Compose box — only for members */}
         {isMember && (
-          <div className="mb-6">
+          <div className="mb-5">
             <BlockEditor
               clubId={clubId}
               userAvatarUrl={profile?.avatar_url}
-              userInitial={
-                (profile?.display_name || user?.email || "?")[0].toUpperCase()
-              }
+              userInitial={(profile?.display_name || user?.email || "?")[0].toUpperCase()}
             />
           </div>
         )}
 
         {/* Feed */}
         {posts.length > 0 ? (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {posts.map((post) => (
               <PostCard
                 key={post.id}
@@ -120,17 +122,21 @@ export default async function ClubPostsPage({
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-green-200 text-4xl shadow-inner">
-              ⚽
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-16 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-50 to-green-100">
+              <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
+                <circle cx="12" cy="12" r="9.5" stroke="#15803d" strokeWidth="1.5"/>
+                <path d="M12 4.5L14.5 8h-5L12 4.5zM12 19.5L9.5 16h5L12 19.5zM4.5 12L8 9.5v5L4.5 12zM19.5 12L16 14.5v-5L19.5 12z" fill="#15803d" opacity=".5"/>
+                <circle cx="12" cy="12" r="2" fill="#15803d" opacity=".8"/>
+              </svg>
             </div>
-            <h3 className="mt-5 text-lg font-semibold text-gray-800">还没有任何动态</h3>
+            <p className="text-[15px] font-semibold text-zinc-700">还没有任何手记</p>
             {isMember ? (
-              <p className="mt-2 text-sm text-gray-400">
-                发一条手记，记录你们的故事 👆
+              <p className="mt-1.5 text-sm text-zinc-400">
+                发一条手记，记录你们的故事
               </p>
             ) : (
-              <p className="mt-2 text-sm text-gray-400">
+              <p className="mt-1.5 text-sm text-zinc-400">
                 加入俱乐部后即可发布手记
               </p>
             )}

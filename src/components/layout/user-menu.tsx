@@ -6,9 +6,9 @@ import { logout } from "@/lib/actions/auth";
 import { useTranslations } from "next-intl";
 import {
   User,
-  SquaresFour,
   SignOut,
   CaretDown,
+  Plus,
 } from "@phosphor-icons/react";
 
 type Club = { slug: string; name: string; badge_url: string | null };
@@ -104,16 +104,14 @@ export function UserMenu({
               <User size={15} className="text-zinc-400" />
               {tp("editProfile")}
             </Link>
-            {clubs.length > 1 && (
-              <Link
-                href="/dashboard"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50"
-              >
-                <SquaresFour size={15} className="text-zinc-400" />
-                Dashboard
-              </Link>
-            )}
+            <Link
+              href="/create-club"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-4 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50"
+            >
+              <Plus size={15} className="text-zinc-400" />
+              新建俱乐部
+            </Link>
             <div className="mx-3 my-1 h-px bg-slate-100" />
             <form action={logout}>
               <button

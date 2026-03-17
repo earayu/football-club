@@ -13,27 +13,23 @@ export function ClubTabs({ slug }: { slug: string }) {
   ];
 
   return (
-    <div className="border-t border-gray-100 bg-white">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6">
-        <nav className="flex gap-0">
-          {tabs.map((tab) => (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`relative px-5 py-3 text-sm font-medium transition-colors ${
-                tab.active
-                  ? "text-green-600"
-                  : "text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              {tab.label}
-              {tab.active && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-green-600" />
-              )}
-            </Link>
-          ))}
-        </nav>
-      </div>
-    </div>
+    <nav className="flex gap-0 -mb-px">
+      {tabs.map((tab) => (
+        <Link
+          key={tab.href}
+          href={tab.href}
+          className={`relative px-1 mr-6 pb-3 text-[13px] font-semibold tracking-wide transition-colors ${
+            tab.active
+              ? "text-zinc-900"
+              : "text-zinc-400 hover:text-zinc-600"
+          }`}
+        >
+          {tab.label}
+          {tab.active && (
+            <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-zinc-900" />
+          )}
+        </Link>
+      ))}
+    </nav>
   );
 }

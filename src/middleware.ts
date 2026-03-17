@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     if (AUTH_ONLY_PATHS.some((p) => pathWithoutLocale.startsWith(p))) {
       const locale = pathname.split("/")[1] || "en";
       return NextResponse.redirect(
-        new URL(`/${locale}/dashboard`, request.url)
+        new URL(`/${locale}`, request.url)
       );
     }
   }
